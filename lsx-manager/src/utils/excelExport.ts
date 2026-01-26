@@ -95,13 +95,13 @@ const getActionLabel = (action: string): string => {
 
 const formatDetails = (log: ActivityLog): string => {
     if (log.action === 'task_status_change') {
-        return `${log.details.oldValue} → ${log.details.newValue}`;
+        return `${getStatusLabel(log.details.oldValue || '')} → ${getStatusLabel(log.details.newValue || '')}`;
     }
     if (log.action === 'task_assigned') {
-        return `Gán cho: ${log.details.newValue}`;
+        return `Gán cho: ${log.details.newValue || log.details.assignee || ''}`;
     }
     if (log.details.field) {
-        return `${log.details.field}: ${log.details.oldValue} → ${log.details.newValue}`;
+        return `${log.details.field}: ${log.details.oldValue || ''} → ${log.details.newValue || ''}`;
     }
     return '';
 };

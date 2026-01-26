@@ -39,10 +39,20 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({ logs, isOpen
             'task_status_change': 'Trạng thái',
             'task_assigned': 'Người làm',
             'task_time_set': 'Thời gian',
+            'order_created': 'Tạo đơn',
             'order_deleted': 'Xóa đơn',
             'item_edited': 'Sửa SP'
         };
         return labels[action] || action;
+    };
+
+    const getStatusLabel = (status: string): string => {
+        const labels: Record<string, string> = {
+            'pending': 'Chờ',
+            'in_progress': 'Đang làm',
+            'completed': 'Hoàn thành'
+        };
+        return labels[status] || status;
     };
 
     const formatTime = (timestamp: string) => {
@@ -138,9 +148,9 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({ logs, isOpen
                                                             {(log.details.oldValue || log.details.newValue) && (
                                                                 <span className="flex items-center gap-1">
                                                                     <span className="text-gray-400">Thay đổi:</span>
-                                                                    <span className="font-medium text-orange-600 uppercase text-[10px]">{log.details.oldValue || '...'}</span>
+                                                                    <span className="font-medium text-orange-600 uppercase text-[10px]">{getStatusLabel(log.details.oldValue || '...')}</span>
                                                                     <span className="text-gray-300">→</span>
-                                                                    <span className="font-bold text-green-600 uppercase text-[10px]">{log.details.newValue}</span>
+                                                                    <span className="font-bold text-green-600 uppercase text-[10px]">{getStatusLabel(log.details.newValue || '')}</span>
                                                                 </span>
                                                             )}
                                                         </div>

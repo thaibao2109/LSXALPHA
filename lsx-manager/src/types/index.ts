@@ -65,3 +65,9 @@ export interface ActivityLog {
         assignee?: string;
     };
 }
+
+export interface ProductType {
+    id: string;
+    name: string;
+    tasks: string[]; // List of task names that belong to this product type
+}

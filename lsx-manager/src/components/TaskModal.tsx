@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { X, Plus, Trash2, CheckCircle2, Circle, Printer } from 'lucide-react';
-import type { LSXItem, Task, LSXData, ActivityLog } from '../types';
+import React, { useRef, useState } from 'react';
+import { X, Trash2, CheckCircle2, Circle, Printer, ArrowDownToLine, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import type { LSXItem, Task, LSXData, ActivityLog, ProductType } from '../types';
 import { clsx } from 'clsx';
 import { printWorkOrder } from './WorkOrderSheet';
+import type { PrintConfig } from '../utils/printConfig';
 
 interface TaskModalProps {
     item: LSXItem;
@@ -12,9 +13,37 @@ interface TaskModalProps {
     availableTasks: string[];
     order: LSXData;
     onLogActivity?: (action: ActivityLog['action'], orderId: string, orderName: string, details: Partial<Omit<ActivityLog, 'id' | 'timestamp' | 'action' | 'orderId' | 'orderName'>>) => void;
+    printConfig: PrintConfig;
+    productTypes?: ProductType[];
 }
 
-export const TaskModal: React.FC<TaskModalProps> = ({ item, isOpen, onClose, onUpdateTasks, availableTasks, order, onLogActivity }) => {
+export const TaskModal: React.FC<TaskModalProps> = ({
+    item,
+    isOpen,
+    onClose,
+    onUpdateTasks,
+    availableTasks,
+    order,
+    onLogActivity,
+    printConfig,
+    productTypes = []
+}) => {
+    const [selectedProductTypeId, setSelectedProductTypeId] = useState<string>('');
+    const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+    const initialAssigneeRef = useRef<string>('');
+    const addMenuRef = useRef<HTMLDivElement>(null);
+
+    // Close menu when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (addMenuRef.current && !addMenuRef.current.contains(event.target as Node)) {
+                setIsAddMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     if (!isOpen) return null;
 
     const cycleStatus = (taskId: string, currentStatus: string) => {
@@ -43,8 +72,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({ item, isOpen, onClose, onU
             });
         }
     };
-
-    const initialAssigneeRef = useRef<string>('');
 
     const updateAssignee = (taskId: string, assignee: string) => {
         const updatedTasks = (item.tasks || []).map(t =>
@@ -83,7 +110,57 @@ export const TaskModal: React.FC<TaskModalProps> = ({ item, isOpen, onClose, onU
         onUpdateTasks(item.id, updatedTasks);
     };
 
-    const suggestTasks = ["Cắt phôi", "Dập", "Tiện thô", "Tiện tinh", "Phay", "Khoan", "Nhiệt luyện", "Mạ", "Đóng gói"];
+    const handleApplyTemplate = () => {
+        const template = productTypes.find(t => t.id === selectedProductTypeId);
+        if (!template) return;
+
+        if ((item.tasks || []).length > 0) {
+            if (!confirm('Hành động này sẽ XÓA TOÀN BỘ các công đoạn hiện tại và thay thế bằng mẫu mới. Bạn có chắc chắn không?')) {
+                return;
+            }
+        }
+
+        const newTasks: Task[] = template.tasks.map(taskName => ({
+            id: crypto.randomUUID(),
+            name: taskName,
+            status: 'pending'
+        }));
+
+        onUpdateTasks(item.id, newTasks);
+        setSelectedProductTypeId(''); // Reset selection
+
+        // Log Activity
+        if (onLogActivity) {
+            onLogActivity('item_edited', order.id!, order.meta.phieuXuat, {
+                itemId: item.id,
+                itemName: item.tenHangHoa,
+                details: {
+                    field: 'tasks (template)',
+                    newValue: template.name
+                }
+            });
+        }
+    };
+
+    const moveTask = (index: number, direction: 'up' | 'down') => {
+        const currentTasks = item.tasks || [];
+        const newTasks = [...currentTasks];
+
+        if (direction === 'up') {
+            if (index === 0) return;
+            [newTasks[index - 1], newTasks[index]] = [newTasks[index], newTasks[index - 1]];
+        } else {
+            if (index === newTasks.length - 1) return;
+            [newTasks[index], newTasks[index + 1]] = [newTasks[index + 1], newTasks[index]];
+        }
+        onUpdateTasks(item.id, newTasks);
+    };
+
+    const addTask = (taskName: string) => {
+        const newTask: Task = { id: crypto.randomUUID(), name: taskName, status: 'pending' };
+        onUpdateTasks(item.id, [...(item.tasks || []), newTask]);
+        setIsAddMenuOpen(false);
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -96,19 +173,29 @@ export const TaskModal: React.FC<TaskModalProps> = ({ item, isOpen, onClose, onU
                             QC: {item.quyCach} | SL: <span className="font-semibold text-blue-600">{item.slYeuCau} {item.donVi}</span>
                         </p>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => printWorkOrder(order, item, printConfig)}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                            title="In Lệnh Sản Xuất (Toàn bộ quy trình)"
+                        >
+                            <Printer className="w-4 h-4" />
+                            <span>In Lệnh SX</span>
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Body */}
                 <div className="p-6 overflow-y-auto flex-1">
 
                     {/* Progress Bar */}
-                    <div className="mb-8">
+                    <div className="mb-4">
                         <div className="flex justify-between text-sm mb-2 font-medium">
                             <span className="text-gray-600">Tiến độ hoàn thành</span>
                             <span className="text-blue-600">
@@ -123,33 +210,43 @@ export const TaskModal: React.FC<TaskModalProps> = ({ item, isOpen, onClose, onU
                         </div>
                     </div>
 
-                    {/* Quick Add Suggestions */}
-                    <div className="mb-6">
-                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Chọn công đoạn</p>
-                        <div className="flex flex-wrap gap-2">
-                            {availableTasks.map(task => (
-                                <button
-                                    key={task}
-                                    onClick={() => {
-                                        const newTask: Task = { id: crypto.randomUUID(), name: task, status: 'pending' };
-                                        onUpdateTasks(item.id, [...(item.tasks || []), newTask]);
-                                    }}
-                                    className="px-3 py-1.5 text-sm bg-gray-50 border border-gray-200 text-gray-600 rounded-md hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all font-medium"
+                    {/* Apply Template Section */}
+                    {productTypes.length > 0 && (
+                        <div className="mb-8 bg-blue-50/50 border border-blue-100 rounded-lg p-3 flex flex-wrap items-end gap-3">
+                            <div className="flex-1 min-w-[200px]">
+                                <label className="block text-xs font-semibold text-blue-700 uppercase tracking-wider mb-1">
+                                    Áp dụng Mẫu Loại Sản Phẩm
+                                </label>
+                                <select
+                                    value={selectedProductTypeId}
+                                    onChange={(e) => setSelectedProductTypeId(e.target.value)}
+                                    className="w-full px-3 py-2 text-sm border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
                                 >
-                                    + {task}
-                                </button>
-                            ))}
+                                    <option value="">-- Chọn mẫu sản phẩm --</option>
+                                    {productTypes.map(pt => (
+                                        <option key={pt.id} value={pt.id}>{pt.name} ({pt.tasks.length} công đoạn)</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                onClick={handleApplyTemplate}
+                                disabled={!selectedProductTypeId}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ArrowDownToLine className="w-4 h-4" />
+                                Áp dụng
+                            </button>
                         </div>
-                    </div>
+                    )}
 
                     {/* Task List */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 mb-20">
                         {(!item.tasks || item.tasks.length === 0) && (
                             <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-lg">
                                 <p className="text-gray-400">Chưa có công đoạn nào được tạo.</p>
                             </div>
                         )}
-                        {item.tasks?.map((task) => (
+                        {item.tasks?.map((task, index) => (
                             <div
                                 key={task.id}
                                 className={clsx(
@@ -228,29 +325,68 @@ export const TaskModal: React.FC<TaskModalProps> = ({ item, isOpen, onClose, onU
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); printWorkOrder(order, item, task); }}
-                                        className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
-                                        title="In phiếu công đoạn"
-                                    >
-                                        <Printer className="w-5 h-5" />
-                                    </button>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex flex-col gap-1 mr-2">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); moveTask(index, 'up'); }}
+                                            disabled={index === 0}
+                                            className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                                        >
+                                            <ArrowUp className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); moveTask(index, 'down'); }}
+                                            disabled={!item.tasks || index === item.tasks.length - 1}
+                                            className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                                        >
+                                            <ArrowDown className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
-                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                                        className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"
                                     >
                                         <Trash2 className="w-5 h-5" />
                                     </button>
                                 </div>
                             </div>
+
                         ))}
                     </div>
                 </div>
 
-                {/* Footer removed: No more manual entry */}
-                <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl text-center text-xs text-gray-400">
-                    Cần thêm công đoạn khác? Liên hệ Quản lý để cấu hình.
+                {/* Footer: Add Task Button & Dropdown */}
+                <div className="p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl relative">
+                    <div className="relative" ref={addMenuRef}>
+                        <button
+                            onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+                            className="w-full py-2.5 bg-white border border-dashed border-gray-300 rounded-lg text-gray-500 font-medium hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Thêm công đoạn thủ công
+                        </button>
+
+                        {isAddMenuOpen && (
+                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-10 animate-in slide-in-from-bottom-2 duration-200">
+                                <div className="max-h-[240px] overflow-y-auto p-1.5 grid grid-cols-2 gap-1">
+                                    {availableTasks.map(task => (
+                                        <button
+                                            key={task}
+                                            onClick={() => addTask(task)}
+                                            className="text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors"
+                                        >
+                                            {task}
+                                        </button>
+                                    ))}
+                                    {availableTasks.length === 0 && (
+                                        <div className="col-span-2 p-3 text-center text-sm text-gray-400 italic">
+                                            Không có công đoạn mẫu nào.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

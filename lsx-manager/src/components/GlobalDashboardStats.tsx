@@ -6,21 +6,32 @@ interface GlobalDashboardStatsProps {
     orders: LSXData[];
 }
 
+const StatCard = ({ label, value, icon: Icon, colorClass, trend }: any) => (
+    <div className="premium-card p-6 flex flex-col justify-between group">
+        <div className="flex justify-between items-start mb-4">
+            <div className={`p-3 rounded-2xl ${colorClass} transition-colors duration-300`}>
+                <Icon className="w-6 h-6" />
+            </div>
+            {trend && (
+                <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full ${trend > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
+                </div>
+            )}
+        </div>
+        <div>
+            <p className="text-sm font-semibold text-surface-500 mb-1">{label}</p>
+            <h3 className="text-3xl font-extrabold text-surface-900 tracking-tight">{value}</h3>
+        </div>
+    </div>
+);
+
 export const GlobalDashboardStats: React.FC<GlobalDashboardStatsProps> = ({ orders }) => {
-    // 1. Total Active Orders
     const totalOrders = orders.length;
-
-    // 2. Total Items across all orders
     const totalItems = orders.reduce((sum, order) => sum + order.items.length, 0);
-
-    // 3. Total Quantity across all orders
     const totalQuantity = orders.reduce((sum, order) =>
         sum + order.items.reduce((itemSum, item) => itemSum + item.slYeuCau, 0)
         , 0);
 
-    // 4. Global Progress
-    // Calculate average progress weighted by number of items per order? Or just simple average of order progress?
-    // Let's do average of all items individually for accuracy.
     let globalProgressSum = 0;
     let globalItemCount = 0;
 
@@ -38,48 +49,52 @@ export const GlobalDashboardStats: React.FC<GlobalDashboardStatsProps> = ({ orde
     const globalProgress = globalItemCount > 0 ? Math.round((globalProgressSum / globalItemCount) * 100) : 0;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {/* Active Orders */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
-                <div>
-                    <p className="text-sm font-medium text-gray-500">Đơn hàng đang chạy</p>
-                    <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalOrders}</h3>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-                    <Briefcase className="w-6 h-6" />
-                </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard
+                label="Đơn hàng đang chạy"
+                value={totalOrders}
+                icon={Briefcase}
+                colorClass="bg-brand-50 text-brand-600 group-hover:bg-brand-600 group-hover:text-white"
+                trend={12}
+            />
+            <StatCard
+                label="Tổng mã hàng"
+                value={totalItems}
+                icon={Layers}
+                colorClass="bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white"
+            />
+            <StatCard
+                label="Tổng sản lượng"
+                value={totalQuantity.toLocaleString()}
+                icon={Package}
+                colorClass="bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white"
+                trend={5}
+            />
 
-            {/* Total Items */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div className="premium-card p-6 flex items-center gap-6 group">
+                <div className="relative w-20 h-20 shrink-0">
+                    <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                            cx="40" cy="40" r="34"
+                            className="stroke-surface-100 fill-none"
+                            strokeWidth="8"
+                        />
+                        <circle
+                            cx="40" cy="40" r="34"
+                            className="stroke-brand-500 fill-none transition-all duration-1000 ease-out"
+                            strokeWidth="8"
+                            strokeDasharray={213.6}
+                            strokeDashoffset={213.6 - (213.6 * globalProgress) / 100}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-sm font-extrabold text-surface-900">{globalProgress}%</span>
+                    </div>
+                </div>
                 <div>
-                    <p className="text-sm font-medium text-gray-500">Tổng mã hàng</p>
-                    <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalItems}</h3>
-                </div>
-                <div className="p-3 bg-purple-50 rounded-lg text-purple-600">
-                    <Layers className="w-6 h-6" />
-                </div>
-            </div>
-
-            {/* Total Quantity */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
-                <div>
-                    <p className="text-sm font-medium text-gray-500">Tổng sản lượng</p>
-                    <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalQuantity.toLocaleString()}</h3>
-                </div>
-                <div className="p-3 bg-green-50 rounded-lg text-green-600">
-                    <Package className="w-6 h-6" />
-                </div>
-            </div>
-
-            {/* Global Efficiency */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
-                <div>
-                    <p className="text-sm font-medium text-gray-500">Tiến độ toàn xưởng</p>
-                    <h3 className="text-2xl font-bold text-gray-900 mt-1">{globalProgress}%</h3>
-                </div>
-                <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
-                    <Activity className="w-6 h-6" />
+                    <p className="text-sm font-semibold text-surface-500 mb-0.5">Tiến độ xưởng</p>
+                    <p className="text-[10px] text-surface-400 font-medium leading-tight">Dựa trên {globalItemCount} mã hàng đang sản xuất</p>
                 </div>
             </div>
         </div>
