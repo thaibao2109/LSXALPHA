@@ -5,7 +5,8 @@ import { OrderDetailView } from './components/OrderDetailView';
 import { DailyReportModal } from './components/DailyReportModal';
 import { NotificationMenu } from './components/NotificationMenu';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
-import type { LSXData, ActivityLog, ProductType } from './types';
+import type { LSXData, ActivityLog, ProductType, User } from './types';
+import { LoginScreen } from './components/LoginScreen';
 import {
   Settings,
   FileText,
@@ -32,6 +33,7 @@ function App() {
   const [orders, setOrders] = useState<LSXData[]>([]);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('orders');
+  const [user, setUser] = useState<User | null>(null);
 
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -246,6 +248,10 @@ function App() {
     </button>
   );
 
+  if (!user) {
+    return <LoginScreen onLogin={setUser} />;
+  }
+
   return (
     <div className="flex h-screen bg-surface-50">
       {/* Sidebar */}
@@ -269,23 +275,29 @@ function App() {
             label="Báo cáo"
             onClick={() => setIsReportModalOpen(true)}
           />
-          <SidebarItem
-            icon={Settings}
-            label="Cấu hình"
-            onClick={() => setIsConfigModalOpen(true)}
-          />
+          {user?.role === 'admin' && (
+            <SidebarItem
+              icon={Settings}
+              label="Cấu hình"
+              onClick={() => setIsConfigModalOpen(true)}
+            />
+          )}
         </nav>
 
         <div className="p-4 mt-auto">
           <div className="bg-surface-50 rounded-2xl p-4 flex items-center gap-3 border border-surface-100">
             <div className="w-10 h-10 rounded-full bg-surface-200 overflow-hidden">
-              <img src="https://ui-avatars.com/api/?name=Admin&background=0c87eb&color=fff" alt="User" />
+              <img src={`https://ui-avatars.com/api/?name=${user.name}&background=0c87eb&color=fff`} alt="User" />
             </div>
             <div className="flex-1 overflow-hidden">
-              <div className="text-sm font-bold text-surface-900 truncate">Quản trị viên</div>
-              <div className="text-[10px] text-surface-500 truncate">admin@lsx.com</div>
+              <div className="text-sm font-bold text-surface-900 truncate">{user.name}</div>
+              <div className="text-[10px] text-surface-500 truncate">{user.username}@lsx.com</div>
             </div>
-            <button className="text-surface-400 hover:text-red-500 transition-colors">
+            <button
+              onClick={() => setUser(null)}
+              className="text-surface-400 hover:text-red-500 transition-colors"
+              title="Đăng xuất"
+            >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -347,6 +359,7 @@ function App() {
               hasPrevious={hasPrevious}
               hasNext={hasNext}
               onNavigate={handleNavigate}
+              currentUser={user}
             />
           ) : (
             <OrderList
@@ -354,6 +367,7 @@ function App() {
               onSelectOrder={handleSelectOrder}
               onImportOrder={handleImportOrder}
               isDashboardView={currentView === 'dashboard'}
+              currentUser={user}
             />
           )}
         </div>

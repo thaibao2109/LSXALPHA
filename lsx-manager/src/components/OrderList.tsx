@@ -3,7 +3,7 @@ import { FileText, ChevronRight, Plus, Search, LayoutGrid, List, Eye, Check } fr
 import { GlobalDashboardStats } from './GlobalDashboardStats';
 import { ImportPreviewModal } from './ImportPreviewModal';
 import { parseODS } from '../utils/odsParser';
-import type { LSXData } from '../types';
+import type { LSXData, User } from '../types';
 
 const AVAILABLE_COLUMNS = [
     { key: 'donHangSo', label: 'Đơn Hàng' },
@@ -23,9 +23,10 @@ interface OrderListProps {
     onSelectOrder: (orderId: string) => void;
     onImportOrder: (data: LSXData) => void;
     isDashboardView?: boolean;
+    currentUser: User;
 }
 
-export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onImportOrder, isDashboardView }) => {
+export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onImportOrder, isDashboardView, currentUser }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [previewData, setPreviewData] = useState<LSXData | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -155,7 +156,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
                             : `Tổng cộng ${orders.length} lệnh sản xuất đang được theo dõi`}
                     </p>
                 </div>
-                {!isDashboardView && (
+                {!isDashboardView && currentUser.role === 'admin' && (
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-100 transition-all font-semibold active:scale-95"

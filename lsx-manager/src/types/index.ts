@@ -72,3 +72,12 @@ export interface ProductType {
     name: string;
     tasks: string[]; // List of task names that belong to this product type
 }
+
+export type Role = 'admin' | 'manager';
+
+export interface User {
+    id: string;
+    username: string;
+    name: string;
+    role: Role;
+}

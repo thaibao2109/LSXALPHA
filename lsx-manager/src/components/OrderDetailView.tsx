@@ -5,7 +5,7 @@ import { DashboardStats } from './DashboardStats';
 import { ConfigModal } from './ConfigModal';
 import { ArrowLeft, Settings, Trash2, Download, ChevronLeft, ChevronRight, CheckSquare, X, ArrowDownToLine, Pencil, Save } from 'lucide-react';
 import { exportOrderDetail } from '../utils/excelExport';
-import type { LSXData, LSXItem, Task, ActivityLog, ProductType } from '../types';
+import type { LSXData, LSXItem, Task, ActivityLog, ProductType, User } from '../types';
 import type { PrintConfig } from '../utils/printConfig';
 
 interface OrderDetailViewProps {
@@ -21,7 +21,9 @@ interface OrderDetailViewProps {
     onUpdateProductTypes?: (newTypes: ProductType[]) => void;
     hasPrevious?: boolean;
     hasNext?: boolean;
+
     onNavigate?: (direction: 'prev' | 'next') => void;
+    currentUser: User;
 }
 
 export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
@@ -37,7 +39,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
     onUpdateProductTypes,
     hasPrevious = false,
     hasNext = false,
-    onNavigate
+    onNavigate,
+    currentUser
 }) => {
     const [selectedItem, setSelectedItem] = useState<LSXItem | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -252,13 +255,15 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                         </>
                     ) : (
                         <>
-                            <button
-                                onClick={handleStartEdit}
-                                className="flex items-center gap-2 px-4 py-3 bg-white text-brand-600 rounded-xl hover:bg-brand-50 border border-brand-100 shadow-sm transition-all font-semibold active:scale-95 text-sm"
-                            >
-                                <Pencil className="w-4 h-4" />
-                                Sửa
-                            </button>
+                            {currentUser.role === 'admin' && (
+                                <button
+                                    onClick={handleStartEdit}
+                                    className="flex items-center gap-2 px-4 py-3 bg-white text-brand-600 rounded-xl hover:bg-brand-50 border border-brand-100 shadow-sm transition-all font-semibold active:scale-95 text-sm"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                    Sửa
+                                </button>
+                            )}
                             <div className="w-px h-10 bg-surface-200 mx-1" />
                             <button
                                 onClick={() => exportOrderDetail(data)}
@@ -267,20 +272,24 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                             >
                                 <Download className="w-4 h-4" />
                             </button>
-                            <button
-                                onClick={() => setIsConfigModalOpen(true)}
-                                className="p-3 bg-white text-surface-500 rounded-xl hover:text-brand-600 border border-surface-100 shadow-soft transition-all"
-                                title="Cấu hình"
-                            >
-                                <Settings className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={onDelete}
-                                className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white border border-red-100 shadow-soft transition-all"
-                                title="Xóa đơn hàng"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
+                            {currentUser.role === 'admin' && (
+                                <>
+                                    <button
+                                        onClick={() => setIsConfigModalOpen(true)}
+                                        className="p-3 bg-white text-surface-500 rounded-xl hover:text-brand-600 border border-surface-100 shadow-soft transition-all"
+                                        title="Cấu hình"
+                                    >
+                                        <Settings className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={onDelete}
+                                        className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white border border-red-100 shadow-soft transition-all"
+                                        title="Xóa đơn hàng"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </>
+                            )}
                         </>
                     )}
                 </div>
