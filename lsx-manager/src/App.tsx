@@ -3,6 +3,8 @@ import { ConfigModal } from './components/ConfigModal';
 import { OrderList } from './components/OrderList';
 import { OrderDetailView } from './components/OrderDetailView';
 import { DailyReportModal } from './components/DailyReportModal';
+import { NotificationMenu } from './components/NotificationMenu';
+import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
 import type { LSXData, ActivityLog, ProductType } from './types';
 import {
   Settings,
@@ -10,11 +12,12 @@ import {
   ClipboardList,
   Bell,
   Search,
-  ChevronDown,
   LogOut
 } from 'lucide-react';
 import { api } from './utils/api';
 import { DEFAULT_PRINT_CONFIG, type PrintConfig } from './utils/printConfig';
+
+
 
 const ORDERS_STORAGE_KEY = 'lsx_orders';
 const TEMPLATE_KEY = 'lsx_task_templates';
@@ -32,11 +35,26 @@ function App() {
 
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
   const [taskTemplates, setTaskTemplates] = useState<string[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
+
+  const [confirmation, setConfirmation] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDelete: boolean;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    isDelete: true,
+  });
 
   // Initial Load from API + Migration
   useEffect(() => {
@@ -146,16 +164,24 @@ function App() {
     await api.saveOrder(updatedOrder);
   };
 
-  const handleDeleteActiveOrder = async () => {
+  const handleDeleteActiveOrder = () => {
     const order = orders.find(o => o.id === activeOrderId);
-    if (confirm("Bạn có chắc muốn xóa đơn hàng này? Hành động này không thể hoàn tác.")) {
-      if (order?.id) {
-        await api.deleteOrder(order.id);
-        addLog('order_deleted', order.id, order.meta.phieuXuat, {});
+    if (!order) return;
+
+    setConfirmation({
+      isOpen: true,
+      title: 'Xóa đơn hàng',
+      message: 'Bạn có chắc muốn xóa đơn hàng này? Hành động này không thể hoàn tác.',
+      isDelete: true,
+      onConfirm: async () => {
+        if (order?.id) {
+          await api.deleteOrder(order.id);
+          addLog('order_deleted', order.id, order.meta.phieuXuat, {});
+        }
+        setOrders(prev => prev.filter(o => o.id !== activeOrderId));
+        setActiveOrderId(null);
       }
-      setOrders(prev => prev.filter(o => o.id !== activeOrderId));
-      setActiveOrderId(null);
-    }
+    });
   };
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,13 +199,36 @@ function App() {
     // 2. Search by customer (khachHang)
     const matchCustomer = order.meta.khachHang.toLowerCase().includes(q);
 
-    // 3. Search by product name (any item in items)
+    // 3. Search by order number (donHangSo)
+    const donHangSo = order.meta.donHangSo || '';
+    const matchDonHangSoText = donHangSo.toLowerCase().includes(q);
+    // Flexible numeric search: "S-088.24" matches "8824"
+    const queryDigits = q.replace(/\D/g, '');
+    const sourceDigits = donHangSo.replace(/\D/g, '');
+    const matchDonHangSoNumeric = queryDigits.length > 0 && sourceDigits.includes(queryDigits);
+    const matchDonHangSo = matchDonHangSoText || matchDonHangSoNumeric;
+
+    // 4. Search by product name (any item in items)
     const matchProduct = order.items.some(item =>
       item.tenHangHoa.toLowerCase().includes(q)
     );
 
-    return matchOrder || matchCustomer || matchProduct;
+    return matchOrder || matchCustomer || matchDonHangSo || matchProduct;
   });
+
+
+  // Navigation Logic
+  const activeOrderIndex = filteredOrders.findIndex(o => o.id === activeOrderId);
+  const hasPrevious = activeOrderIndex > 0;
+  const hasNext = activeOrderIndex > -1 && activeOrderIndex < filteredOrders.length - 1;
+
+  const handleNavigate = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && hasPrevious) {
+      setActiveOrderId(filteredOrders[activeOrderIndex - 1].id || null);
+    } else if (direction === 'next' && hasNext) {
+      setActiveOrderId(filteredOrders[activeOrderIndex + 1].id || null);
+    }
+  };
 
   // --- UI Components ---
 
@@ -201,7 +250,7 @@ function App() {
     <div className="flex h-screen bg-surface-50">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-surface-200 flex flex-col shrink-0">
-        <div className="p-6 flex justify-center">
+        <div className="p-6 flex justify-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setCurrentView('orders'); setActiveOrderId(null); }}>
           <img src="/logo-alpha.png" alt="Alpha Logo" className="h-12 w-auto object-contain mx-auto" />
         </div>
 
@@ -260,16 +309,24 @@ function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <button className="relative text-surface-500 hover:text-brand-600 transition-colors">
+          <div className="flex items-center gap-6 relative">
+            <button
+              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              className="relative text-surface-500 hover:text-brand-600 transition-colors"
+            >
               <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-[10px] text-white rounded-full flex items-center justify-center font-bold border-2 border-white">3</span>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-[10px] text-white rounded-full flex items-center justify-center font-bold border-2 border-white">
+                {activityLogs.length > 99 ? '99+' : activityLogs.length}
+              </span>
             </button>
-            <div className="h-6 w-px bg-surface-200" />
-            <button className="flex items-center gap-2 group">
-              <span className="text-sm font-medium text-surface-700 group-hover:text-brand-600 transition-colors">Việt Nam</span>
-              <ChevronDown className="w-4 h-4 text-surface-400" />
-            </button>
+
+            <NotificationMenu
+              logs={activityLogs}
+              isOpen={isNotificationOpen}
+              onClose={() => setIsNotificationOpen(false)}
+            />
+
+
           </div>
         </header>
 
@@ -287,6 +344,9 @@ function App() {
               printConfig={printConfig}
               productTypes={productTypes}
               onUpdateProductTypes={handleUpdateProductTypes}
+              hasPrevious={hasPrevious}
+              hasNext={hasNext}
+              onNavigate={handleNavigate}
             />
           ) : (
             <OrderList
@@ -316,6 +376,15 @@ function App() {
         logs={activityLogs}
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={confirmation.isOpen}
+        onClose={() => setConfirmation(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmation.onConfirm}
+        title={confirmation.title}
+        message={confirmation.message}
+        isDelete={confirmation.isDelete}
       />
     </div>
   );

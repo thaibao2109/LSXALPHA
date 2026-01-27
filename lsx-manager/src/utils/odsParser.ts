@@ -1,6 +1,34 @@
 import * as XLSX from 'xlsx';
 import type { LSXData, LSXItem } from '../types';
 
+// Helper to normalize header strings for comparison
+const normalizeHeader = (header: any): string => {
+    if (!header) return "";
+    return String(header).trim().toLowerCase();
+};
+
+// Map of Property Key -> Possible Header Names (lowercased)
+const COLUMN_MAPPING: Record<keyof Omit<LSXItem, 'id' | 'tasks'>, string[]> = {
+    stt: ['stt', 'no.'],
+    tenHangHoa: ['tên hàng hóa', 'tên hàng', 'tên sản phẩm'],
+    beMat: ['bề mặt', 'xử lý bề mặt'],
+    donVi: ['đơn vị', 'đvt', 'đơn vị tính', 'bộ'],
+    quyCach: ['quy cách', 'kích thước'],
+    slYeuCau: ['sl yêu cầu', 'số lượng yêu cầu', 'sl đặt'],
+    slDuPhong: ['sl dự phòng', 'số lượng dự phòng'],
+    buocRen: ['bước ren', 'pitch'],
+    marking: ['marking', 'ký hiệu', 'mác'],
+    chieuDaiRen: ['chiều dài ren', 'len.', 'length'],
+    duongKinhTien: ['đk tiện', 'đường kính tiện'],
+    duongKinhThan: ['đk thân', 'đường kính thân'],
+    duongKinhDinhRen: ['đk đỉnh ren', 'đường kính đỉnh ren', 'đk đỉnh'],
+    doDay: ['độ dày', 'chiều dày'],
+    kichThuocLucGiac: ['kt lục giác', 'kích thước lục giác', 'lục giác'],
+    wh: ['wh', 'w.h'],
+    vatLieu: ['vl', 'vật liệu', 'mác thép'],
+    quyCachPhoi: ['qc phôi', 'quy cách phôi', 'phôi']
+};
+
 export const parseODS = (file: File): Promise<LSXData> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -42,54 +70,68 @@ export const parseODS = (file: File): Promise<LSXData> => {
                 let headerRowIndex = -1;
                 for (let i = 0; i < jsonData.length; i++) {
                     const row = jsonData[i];
-                    if (row && row.includes("STT") && row.includes("TÊN HÀNG HÓA")) {
+                    if (row && row.some(cell => normalizeHeader(cell).includes('stt')) && row.some(cell => normalizeHeader(cell).includes('tên hàng'))) {
                         headerRowIndex = i;
                         break;
                     }
                 }
 
                 if (headerRowIndex === -1) {
-                    reject(new Error("Cannot find valid header row (STT, TÊN HÀNG HÓA)"));
+                    reject(new Error("Cannot find valid header row (must contain 'STT' and 'Tên hàng hóa')"));
                     return;
                 }
 
-                // 3. Extract Items
+                // 3. Build Column Index Map
+                const headerRow = jsonData[headerRowIndex];
+                const columnIndices: Partial<Record<keyof LSXItem, number>> = {};
+
+                headerRow.forEach((cell, index) => {
+                    const normalizedCell = normalizeHeader(cell);
+                    for (const [key, validHeaders] of Object.entries(COLUMN_MAPPING)) {
+                        if (validHeaders.some(h => normalizedCell === h || normalizedCell.includes(h))) {
+                            // Only assign if not already assigned (first match wins)
+                            if (columnIndices[key as keyof LSXItem] === undefined) {
+                                columnIndices[key as keyof LSXItem] = index;
+                            }
+                        }
+                    }
+                });
+
+                // 4. Extract Items
                 const items: LSXItem[] = [];
-                // skipped header map logic as we use fixed indices
-
-                // Manual mapping based on known columns to avoid ambiguity
-
-                // Manual mapping based on known columns to avoid ambiguity
-                // Row 8: ["STT","TÊN HÀNG HÓA","Bề mặt","BỘ","QUY CÁCH","SL yêu cầu","SL dự phòng","Bước ren",...]
-                // Column indices based on log:
-                // 0: STT, 1: Tên, 2: Bề mặt, 3: Bộ, 4: QC, 5: SL YC, 6: SL DP, 7: Bước ren
-                // 8: Marking, 9: Chiều dài ren, 10: ĐK Tiện, 11: ĐK Thân, 12: ĐK Đỉnh, 13: Độ dày, 14: KT Lục giác, 15: WH, 16: VL, 17: QC Phôi
-
                 for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                     const row = jsonData[i];
-                    if (!row || row.length === 0 || !row[0]) continue; // Skip empty rows
+                    if (!row || row.length === 0 || !row[columnIndices.stt || 0]) continue; // Skip empty rows or rows without STT
 
-                    // Simple mapping by index for now to be precise
+                    const getItemValue = (key: keyof LSXItem): any => {
+                        const index = columnIndices[key];
+                        if (index === undefined) return "";
+                        return row[index] !== undefined ? row[index] : "";
+                    };
+
+                    const slYeuCauRaw = getItemValue('slYeuCau');
+                    const slDuPhongRaw = getItemValue('slDuPhong');
+
                     const item: LSXItem = {
                         id: `item-${i}`,
-                        stt: row[0],
-                        tenHangHoa: row[1],
-                        beMat: row[2],
-                        donVi: row[3],
-                        quyCach: row[4],
-                        slYeuCau: typeof row[5] === 'number' ? row[5] : parseInt(String(row[5] || 0)) || 0,
-                        slDuPhong: typeof row[6] === 'number' ? row[6] : parseInt(String(row[6] || 0)) || 0,
-                        buocRen: row[7],
-                        // skipping marking
-                        chieuDaiRen: row[9],
-                        duongKinhTien: row[10],
-                        duongKinhThan: row[11],
-                        duongKinhDinhRen: row[12],
-                        doDay: row[13],
-                        kichThuocLucGiac: row[14],
-                        wh: row[15],
-                        vatLieu: row[16],
-                        quyCachPhoi: row[17],
+                        stt: getItemValue('stt'),
+                        tenHangHoa: getItemValue('tenHangHoa'),
+                        beMat: getItemValue('beMat'),
+                        donVi: getItemValue('donVi'),
+                        quyCach: getItemValue('quyCach'),
+                        slYeuCau: typeof slYeuCauRaw === 'number' ? slYeuCauRaw : parseInt(String(slYeuCauRaw || 0)) || 0,
+                        slDuPhong: typeof slDuPhongRaw === 'number' ? slDuPhongRaw : parseInt(String(slDuPhongRaw || 0)) || 0,
+                        buocRen: getItemValue('buocRen'),
+                        marking: getItemValue('marking'),
+                        chieuDaiRen: getItemValue('chieuDaiRen'),
+                        duongKinhTien: getItemValue('duongKinhTien'),
+                        duongKinhThan: getItemValue('duongKinhThan'),
+                        duongKinhDinhRen: getItemValue('duongKinhDinhRen'),
+                        doDay: getItemValue('doDay'),
+                        kichThuocLucGiac: getItemValue('kichThuocLucGiac'),
+                        wh: getItemValue('wh'),
+                        vatLieu: getItemValue('vatLieu'),
+                        quyCachPhoi: getItemValue('quyCachPhoi'),
                         tasks: []
                     };
                     items.push(item);

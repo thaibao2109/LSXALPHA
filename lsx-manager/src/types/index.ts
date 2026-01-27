@@ -16,6 +16,7 @@ export interface LSXItem {
     wh: string;
     vatLieu: string;
     quyCachPhoi: string;
+    marking: string;
 
     // Custom fields for management
     id: string; // Unique ID generated from ODS data

@@ -20,7 +20,8 @@ export const AVAILABLE_SPECS: Record<string, string> = {
     'chieuDaiRen': 'Chiều dài ren',
     'beMat': 'Xử lý bề mặt',
     'slYeuCau': 'Số lượng yêu cầu',
-    'slDuPhong': 'Số lượng dự phòng'
+    'slDuPhong': 'Số lượng dự phòng',
+    'marking': 'Marking / Ký hiệu'
 };
 
 export const DEFAULT_PRINT_CONFIG: PrintConfig = {

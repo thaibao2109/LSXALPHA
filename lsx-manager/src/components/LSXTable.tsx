@@ -11,15 +11,57 @@ interface LSXTableProps {
     printConfig: PrintConfig;
 }
 
-export const LSXTable: React.FC<LSXTableProps> = ({ items, onItemClick, order, printConfig }) => {
+export const LSXTable: React.FC<LSXTableProps & {
+    selectedItems?: Set<string>;
+    onSelectionChange?: (selectedIds: Set<string>) => void;
+}> = ({ items, onItemClick, order, printConfig, selectedItems, onSelectionChange }) => {
+    const allSelected = items.length > 0 && selectedItems?.size === items.length;
+    const someSelected = (selectedItems?.size || 0) > 0 && (selectedItems?.size || 0) < items.length;
+
+    const handleSelectAll = () => {
+        if (!onSelectionChange) return;
+        if (allSelected) {
+            onSelectionChange(new Set());
+        } else {
+            onSelectionChange(new Set(items.map(i => i.id)));
+        }
+    };
+
+    const handleSelectRow = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!onSelectionChange) return;
+        const newSelected = new Set(selectedItems);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        onSelectionChange(newSelected);
+    };
+
     return (
         <div className="premium-card overflow-hidden">
             <div className="overflow-x-auto scrollbar-hide">
                 <table className="min-w-full">
                     <thead className="bg-surface-50/50 border-b border-surface-100">
                         <tr>
-                            <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest sticky left-0 bg-surface-50/50 z-20">STT</th>
-                            <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest sticky left-14 bg-surface-50/50 z-20 min-w-[240px]">Tên hàng hóa</th>
+                            <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest sticky left-0 bg-surface-50/50 z-20 min-w-[50px]">
+                                {onSelectionChange && (
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-surface-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
+                                            checked={allSelected}
+                                            ref={input => {
+                                                if (input) input.indeterminate = someSelected;
+                                            }}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </div>
+                                )}
+                            </th>
+                            <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest sticky left-[50px] bg-surface-50/50 z-20">STT</th>
+                            <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest sticky left-[100px] bg-surface-50/50 z-20 min-w-[240px]">Tên hàng hóa</th>
                             <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest min-w-[150px]">QC / Kích thước</th>
                             <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest">Vật liệu</th>
                             <th scope="col" className="px-6 py-4 text-center text-[10px] font-bold text-surface-400 uppercase tracking-widest">Sản lượng</th>
@@ -38,8 +80,20 @@ export const LSXTable: React.FC<LSXTableProps> = ({ items, onItemClick, order, p
                                     className="hover:bg-brand-50/30 transition-colors cursor-pointer group"
                                     onClick={() => onItemClick(item)}
                                 >
-                                    <td className="px-6 py-5 whitespace-nowrap text-sm font-semibold text-surface-400 text-center sticky left-0 bg-white group-hover:bg-transparent z-10">{index + 1}</td>
-                                    <td className="px-6 py-5 sticky left-14 bg-white group-hover:bg-transparent z-10">
+                                    <td className="px-6 py-5 whitespace-nowrap text-sm font-semibold text-surface-400 text-center sticky left-0 bg-white group-hover:bg-transparent z-10">
+                                        {onSelectionChange && (
+                                            <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-surface-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
+                                                    checked={selectedItems?.has(item.id)}
+                                                    onChange={(e) => handleSelectRow(item.id, e as any)}
+                                                />
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-5 whitespace-nowrap text-sm font-semibold text-surface-400 text-center sticky left-[50px] bg-white group-hover:bg-transparent z-10">{index + 1}</td>
+                                    <td className="px-6 py-5 sticky left-[100px] bg-white group-hover:bg-transparent z-10">
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold text-surface-900 group-hover:text-brand-600 transition-colors">{item.tenHangHoa}</span>
                                             <span className="text-[10px] text-surface-400 font-medium">Mã hệ thống: {item.id.slice(0, 8)}</span>
@@ -70,8 +124,8 @@ export const LSXTable: React.FC<LSXTableProps> = ({ items, onItemClick, order, p
                                                         <div
                                                             key={task.id}
                                                             className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-tight ${task.status === 'completed'
-                                                                    ? 'bg-green-50 text-green-700 border-green-200'
-                                                                    : 'bg-surface-50 text-surface-500 border-surface-200'
+                                                                ? 'bg-green-50 text-green-700 border-green-200'
+                                                                : 'bg-surface-50 text-surface-500 border-surface-200'
                                                                 }`}
                                                         >
                                                             {task.status === 'completed' ? (

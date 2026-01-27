@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Settings, Printer, ListChecks, CheckSquare, Square, Tags, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, Plus, Trash2, Settings, Printer, ListChecks, CheckSquare, Square, Tags, ArrowUp, ArrowDown, Copy, Pencil, Check } from 'lucide-react';
 import { AVAILABLE_SPECS, type PrintConfig, DEFAULT_PRINT_CONFIG } from '../utils/printConfig';
 import type { ProductType } from '../types';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { clsx } from 'clsx';
 
 interface ConfigModalProps {
@@ -34,6 +35,27 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
     // Product Type State
     const [newProductTypeName, setNewProductTypeName] = useState('');
     const [selectedProductType, setSelectedProductType] = useState<ProductType | null>(null);
+    const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
+    const [editTypeName, setEditTypeName] = useState('');
+
+    // Task Editing State
+    const [editingTaskName, setEditingTaskName] = useState<string | null>(null);
+    const [editTaskValue, setEditTaskValue] = useState('');
+
+    // Confirmation Modal State
+    const [confirmation, setConfirmation] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        isDelete: boolean;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        isDelete: true,
+    });
 
     // Initial check for selected print task
     React.useEffect(() => {
@@ -57,19 +79,32 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
     };
 
     const handleDelete = (template: string) => {
-        if (confirm(`Bạn có chắc muốn xóa công đoạn mẫu "${template}" không?`)) {
-            onUpdateTemplates(templates.filter(t => t !== template));
-            if (selectedPrintTask === template) {
-                setSelectedPrintTask(templates.find(t => t !== template) || null);
+        setConfirmation({
+            isOpen: true,
+            title: 'Xóa công đoạn mẫu',
+            message: `Bạn có chắc muốn xóa công đoạn mẫu "${template}" không?`,
+            isDelete: true,
+            onConfirm: () => {
+                onUpdateTemplates(templates.filter(t => t !== template));
+                if (selectedPrintTask === template) {
+                    setSelectedPrintTask(templates.find(t => t !== template) || null);
+                }
             }
-        }
+        });
     };
 
     const handleReset = () => {
-        if (defaultTemplates && confirm('Bạn có chắc muốn khôi phục danh sách công đoạn về mặc định? Các công đoạn tùy chỉnh hiện tại sẽ bị mất.')) {
-            onUpdateTemplates(defaultTemplates);
-            setSelectedPrintTask(defaultTemplates[0] || null);
-        }
+        if (!defaultTemplates) return;
+        setConfirmation({
+            isOpen: true,
+            title: 'Khôi phục mặc định',
+            message: 'Bạn có chắc muốn khôi phục danh sách công đoạn về mặc định? Các công đoạn tùy chỉnh hiện tại sẽ bị mất.',
+            isDelete: true,
+            onConfirm: () => {
+                onUpdateTemplates(defaultTemplates);
+                setSelectedPrintTask(defaultTemplates[0] || null);
+            }
+        });
     };
 
     // --- Print Config Logic ---
@@ -99,6 +134,68 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
         return printConfig[taskName] || [];
     };
 
+    // --- Task Editing Logic ---
+    const handleStartEditTask = (task: string) => {
+        setEditingTaskName(task);
+        setEditTaskValue(task);
+    };
+
+    const handleCancelEditTask = () => {
+        setEditingTaskName(null);
+        setEditTaskValue('');
+    };
+
+    const handleSaveTaskEdit = () => {
+        if (!editingTaskName || !editTaskValue.trim()) return;
+        const oldName = editingTaskName;
+        const newName = editTaskValue.trim();
+
+        if (oldName === newName) {
+            handleCancelEditTask();
+            return;
+        }
+
+        if (templates.includes(newName)) {
+            alert('Tên công đoạn này đã tồn tại!');
+            return;
+        }
+
+        // 1. Update Templates List
+        const newTemplates = templates.map(t => t === oldName ? newName : t);
+        onUpdateTemplates(newTemplates);
+
+        // 2. Update Product Types (Function references)
+        if (onUpdateProductTypes) {
+            const newProductTypes = productTypes.map(pt => ({
+                ...pt,
+                tasks: pt.tasks.map(t => t === oldName ? newName : t)
+            }));
+            onUpdateProductTypes(newProductTypes);
+
+            // Update local selected state if needed
+            if (selectedProductType) {
+                setSelectedProductType(newProductTypes.find(pt => pt.id === selectedProductType.id) || null);
+            }
+        }
+
+        // 3. Update Print Config
+        if (printConfig && onUpdatePrintConfig) {
+            const newConfig = { ...printConfig };
+            if (newConfig[oldName]) {
+                newConfig[newName] = newConfig[oldName];
+                delete newConfig[oldName];
+            }
+            onUpdatePrintConfig(newConfig);
+        }
+
+        // Update local selection for Print Tab if it was the one being edited
+        if (selectedPrintTask === oldName) {
+            setSelectedPrintTask(newName);
+        }
+
+        handleCancelEditTask();
+    };
+
     // --- Product Type Logic ---
     const handleAddProductType = (e: React.FormEvent) => {
         e.preventDefault();
@@ -118,12 +215,33 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
     const handleDeleteProductType = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!onUpdateProductTypes) return;
-        if (confirm('Bạn có chắc muốn xóa loại sản phẩm này?')) {
-            onUpdateProductTypes(productTypes.filter(t => t.id !== id));
-            if (selectedProductType?.id === id) {
-                setSelectedProductType(null);
+
+        setConfirmation({
+            isOpen: true,
+            title: 'Xóa loại sản phẩm',
+            message: 'Bạn có chắc muốn xóa loại sản phẩm này?',
+            isDelete: true,
+            onConfirm: () => {
+                onUpdateProductTypes(productTypes.filter(t => t.id !== id));
+                if (selectedProductType?.id === id) {
+                    setSelectedProductType(null);
+                }
             }
-        }
+        });
+    };
+
+    const handleCloneProductType = (typeToClone: ProductType, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!onUpdateProductTypes) return;
+
+        const newType: ProductType = {
+            id: crypto.randomUUID(),
+            name: `${typeToClone.name} - Copy`,
+            tasks: [...typeToClone.tasks]
+        };
+
+        onUpdateProductTypes([...productTypes, newType]);
+        setSelectedProductType(newType);
     };
 
     const updateProductTypeTasks = (newTasks: string[]) => {
@@ -132,6 +250,30 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
         const updatedList = productTypes.map(pt => pt.id === selectedProductType.id ? updatedType : pt);
         onUpdateProductTypes(updatedList);
         setSelectedProductType(updatedType);
+    };
+
+    const handleStartEditProductType = (type: ProductType) => {
+        setEditingTypeId(type.id);
+        setEditTypeName(type.name);
+    };
+
+    const handleCancelEditProductType = () => {
+        setEditingTypeId(null);
+        setEditTypeName('');
+    };
+
+    const handleSaveProductTypeEdit = () => {
+        if (!editingTypeId || !editTypeName.trim() || !onUpdateProductTypes) return;
+
+        const updatedList = productTypes.map(pt =>
+            pt.id === editingTypeId ? { ...pt, name: editTypeName.trim() } : pt
+        );
+        onUpdateProductTypes(updatedList);
+
+        if (selectedProductType?.id === editingTypeId) {
+            setSelectedProductType({ ...selectedProductType, name: editTypeName.trim() });
+        }
+        handleCancelEditProductType();
     };
 
     const addTaskToProductType = (taskName: string) => {
@@ -247,13 +389,61 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                                                     : "text-gray-600 hover:bg-gray-50"
                                             )}
                                         >
-                                            <span>{type.name}</span>
-                                            <button
-                                                onClick={(e) => handleDeleteProductType(type.id, e)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
+                                            {editingTypeId === type.id ? (
+                                                <div className="flex items-center gap-1 flex-1">
+                                                    <input
+                                                        type="text"
+                                                        value={editTypeName}
+                                                        onChange={(e) => setEditTypeName(e.target.value)}
+                                                        className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                                                        autoFocus
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleSaveProductTypeEdit();
+                                                            if (e.key === 'Escape') handleCancelEditProductType();
+                                                        }}
+                                                    />
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleSaveProductTypeEdit(); }}
+                                                        className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                    >
+                                                        <Check className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleCancelEditProductType(); }}
+                                                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <span>{type.name}</span>
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleStartEditProductType(type); }}
+                                                            className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded"
+                                                            title="Sửa tên"
+                                                        >
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleCloneProductType(type, e)}
+                                                            className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded"
+                                                            title="Nhân bản"
+                                                        >
+                                                            <Copy className="w-3.5 h-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleDeleteProductType(type.id, e)}
+                                                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                                            title="Xóa"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     ))}
                                     {productTypes.length === 0 && (
@@ -366,13 +556,47 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                             <div className="space-y-2">
                                 {templates.map((t, idx) => (
                                     <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors">
-                                        <span className="font-medium text-gray-700">{t}</span>
-                                        <button
-                                            onClick={() => handleDelete(t)}
-                                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        {editingTaskName === t ? (
+                                            <div className="flex items-center gap-2 flex-1 mr-2">
+                                                <input
+                                                    type="text"
+                                                    value={editTaskValue}
+                                                    onChange={(e) => setEditTaskValue(e.target.value)}
+                                                    className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleSaveTaskEdit();
+                                                        if (e.key === 'Escape') handleCancelEditTask();
+                                                    }}
+                                                />
+                                                <button onClick={handleSaveTaskEdit} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                                                    <Check className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={handleCancelEditTask} className="p-1 text-red-500 hover:bg-red-50 rounded">
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <span className="font-medium text-gray-700">{t}</span>
+                                                <div className="flex items-center gap-1 opacity-100">
+                                                    <button
+                                                        onClick={() => handleStartEditTask(t)}
+                                                        className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
+                                                        title="Sửa tên"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(t)}
+                                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                                        title="Xóa"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 ))}
                                 {templates.length === 0 && (
@@ -476,6 +700,15 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                     )}
                 </div>
             </div>
+
+            <DeleteConfirmationModal
+                isOpen={confirmation.isOpen}
+                onClose={() => setConfirmation(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmation.onConfirm}
+                title={confirmation.title}
+                message={confirmation.message}
+                isDelete={confirmation.isDelete}
+            />
         </div>
     );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, CheckCircle, AlertCircle, Edit2, Trash2, Plus } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Trash2, Plus } from 'lucide-react';
 import type { LSXData, LSXItem } from '../types';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 interface ImportPreviewModalProps {
     data: LSXData | null;
@@ -11,7 +12,20 @@ interface ImportPreviewModalProps {
 
 export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, isOpen, onConfirm, onCancel }) => {
     const [editedData, setEditedData] = useState<LSXData | null>(data);
-    const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
+    const [confirmation, setConfirmation] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        isDelete: boolean;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        isDelete: true,
+    });
 
     React.useEffect(() => {
         setEditedData(data);
@@ -31,16 +45,35 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
         });
     };
 
+    const handleMetaChange = (field: keyof LSXData['meta'], value: string) => {
+        setEditedData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                meta: {
+                    ...prev.meta,
+                    [field]: value
+                }
+            };
+        });
+    };
+
     const handleDeleteItem = (itemId: string) => {
-        if (confirm('Bạn có chắc muốn xóa dòng này?')) {
-            setEditedData(prev => {
-                if (!prev) return prev;
-                return {
-                    ...prev,
-                    items: prev.items.filter(item => item.id !== itemId)
-                };
-            });
-        }
+        setConfirmation({
+            isOpen: true,
+            title: 'Xóa dòng',
+            message: 'Bạn có chắc muốn xóa dòng này?',
+            isDelete: true,
+            onConfirm: () => {
+                setEditedData(prev => {
+                    if (!prev) return prev;
+                    return {
+                        ...prev,
+                        items: prev.items.filter(item => item.id !== itemId)
+                    };
+                });
+            }
+        });
     };
 
     const handleAddItem = () => {
@@ -65,6 +98,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                 wh: '',
                 vatLieu: '',
                 quyCachPhoi: '',
+                marking: '',
                 tasks: []
             };
             return {
@@ -101,30 +135,68 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                     {/* Metadata */}
                     <div className="bg-gray-50 p-4 rounded-lg mb-6">
                         <h3 className="font-bold text-gray-800 mb-3">Thông tin đơn hàng</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
-                                <span className="text-gray-500">Phiếu xuất:</span>
-                                <span className="ml-2 font-semibold">{editedData.meta.phieuXuat}</span>
+                                <span className="text-gray-500 block mb-1">Phiếu xuất:</span>
+                                <input
+                                    type="text"
+                                    value={editedData.meta.phieuXuat}
+                                    onChange={(e) => handleMetaChange('phieuXuat', e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded font-semibold text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
+                                />
                             </div>
                             <div>
-                                <span className="text-gray-500">Khách hàng:</span>
-                                <span className="ml-2 font-semibold">{editedData.meta.khachHang}</span>
+                                <span className="text-gray-500 block mb-1">Khách hàng:</span>
+                                <input
+                                    type="text"
+                                    value={editedData.meta.khachHang}
+                                    onChange={(e) => handleMetaChange('khachHang', e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded font-semibold text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
+                                />
                             </div>
                             <div>
-                                <span className="text-gray-500">Đơn hàng số:</span>
-                                <span className="ml-2 font-semibold">{editedData.meta.donHangSo}</span>
+                                <span className="text-gray-500 block mb-1">Đơn hàng số:</span>
+                                <input
+                                    type="text"
+                                    value={editedData.meta.donHangSo}
+                                    onChange={(e) => handleMetaChange('donHangSo', e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded font-semibold text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
+                                />
                             </div>
                             <div>
-                                <span className="text-gray-500">Ngày giao:</span>
-                                <span className="ml-2 font-semibold">{editedData.meta.ngayGiaoHang}</span>
+                                <span className="text-gray-500 block mb-1">Ngày giao:</span>
+                                <input
+                                    type="text"
+                                    value={editedData.meta.ngayGiaoHang}
+                                    onChange={(e) => handleMetaChange('ngayGiaoHang', e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded font-semibold text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
+                                />
                             </div>
                             <div>
-                                <span className="text-gray-500">Tổng mã hàng:</span>
-                                <span className="ml-2 font-semibold text-blue-600">{totalItems}</span>
+                                <span className="text-gray-500 block mb-1">Ngày yêu cầu:</span>
+                                <input
+                                    type="text"
+                                    value={editedData.meta.ngayYeuCau || ''}
+                                    onChange={(e) => handleMetaChange('ngayYeuCau', e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded font-semibold text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
+                                />
                             </div>
                             <div>
-                                <span className="text-gray-500">Tổng sản lượng:</span>
-                                <span className="ml-2 font-semibold text-green-600">{totalQuantity.toLocaleString()}</span>
+                                <span className="text-gray-500 block mb-1">Người lập:</span>
+                                <input
+                                    type="text"
+                                    value={editedData.meta.nguoiLap || ''}
+                                    onChange={(e) => handleMetaChange('nguoiLap', e.target.value)}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded font-semibold text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <span className="text-gray-500 block mb-1">Tổng mã hàng:</span>
+                                <div className="px-2 py-1 font-semibold text-blue-600">{totalItems}</div>
+                            </div>
+                            <div>
+                                <span className="text-gray-500 block mb-1">Tổng sản lượng:</span>
+                                <div className="px-2 py-1 font-semibold text-green-600">{totalQuantity.toLocaleString()}</div>
                             </div>
                         </div>
                     </div>
@@ -142,33 +214,57 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                     </div>
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-100 border-b border-gray-200">
+                            <table className="w-full text-sm whitespace-nowrap">
+                                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-12">STT</th>
-                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 min-w-[200px]">Tên hàng hóa</th>
-                                        <th className="px-3 py-2 text-left font-semibold text-gray-700">Quy cách</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-12 sticky left-0 bg-gray-100 z-20">STT</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-48 sticky left-12 bg-gray-100 z-20 shadow-r">Tên hàng hóa</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">Bề mặt</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-20">Đơn vị</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-32">Quy cách</th>
                                         <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">SL yêu cầu</th>
-                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">SL dự phòng</th>
-                                        <th className="px-3 py-2 text-center font-semibold text-gray-700 w-24">Thao tác</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">Bước ren</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">Marking</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">Chiều dài ren</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">ĐK tiện</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">ĐK đỉnh ren</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">Vật liệu</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">Quy cách phôi</th>
+                                        <th className="px-3 py-2 text-center font-semibold text-gray-700 w-24 sticky right-0 bg-gray-100 z-20 shadow-l">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {editedData.items.map((item, idx) => (
+                                    {editedData.items.map((item) => (
                                         <tr key={item.id} className="hover:bg-gray-50">
-                                            <td className="px-3 py-2">
+                                            <td className="px-3 py-2 sticky left-0 bg-white z-10">
                                                 <input
                                                     type="text"
                                                     value={item.stt || ''}
                                                     onChange={(e) => handleFieldChange(item.id, 'stt', e.target.value)}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none text-center"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2 sticky left-12 bg-white z-10 shadow-r">
+                                                <input
+                                                    type="text"
+                                                    value={item.tenHangHoa || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'tenHangHoa', e.target.value)}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none font-medium"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input
+                                                    type="text"
+                                                    value={item.beMat || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'beMat', e.target.value)}
                                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                                 />
                                             </td>
                                             <td className="px-3 py-2">
                                                 <input
                                                     type="text"
-                                                    value={item.tenHangHoa || ''}
-                                                    onChange={(e) => handleFieldChange(item.id, 'tenHangHoa', e.target.value)}
+                                                    value={item.donVi || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'donVi', e.target.value)}
                                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                                 />
                                             </td>
@@ -185,18 +281,66 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                                                     type="number"
                                                     value={item.slYeuCau || 0}
                                                     onChange={(e) => handleFieldChange(item.id, 'slYeuCau', parseInt(e.target.value) || 0)}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none text-right"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input
+                                                    type="text"
+                                                    value={item.buocRen || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'buocRen', e.target.value)}
                                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                                 />
                                             </td>
                                             <td className="px-3 py-2">
                                                 <input
-                                                    type="number"
-                                                    value={item.slDuPhong || 0}
-                                                    onChange={(e) => handleFieldChange(item.id, 'slDuPhong', parseInt(e.target.value) || 0)}
+                                                    type="text"
+                                                    value={item.marking || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'marking', e.target.value)}
                                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                                 />
                                             </td>
-                                            <td className="px-3 py-2 text-center">
+                                            <td className="px-3 py-2">
+                                                <input
+                                                    type="text"
+                                                    value={item.chieuDaiRen || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'chieuDaiRen', e.target.value)}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input
+                                                    type="text"
+                                                    value={item.duongKinhTien || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'duongKinhTien', e.target.value)}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input
+                                                    type="text"
+                                                    value={item.duongKinhDinhRen || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'duongKinhDinhRen', e.target.value)}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input
+                                                    type="text"
+                                                    value={item.vatLieu || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'vatLieu', e.target.value)}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input
+                                                    type="text"
+                                                    value={item.quyCachPhoi || ''}
+                                                    onChange={(e) => handleFieldChange(item.id, 'quyCachPhoi', e.target.value)}
+                                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                                />
+                                            </td>
+                                            <td className="px-3 py-2 text-center sticky right-0 bg-white z-10 shadow-l">
                                                 <button
                                                     onClick={() => handleDeleteItem(item.id)}
                                                     className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
@@ -229,6 +373,15 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                     </button>
                 </div>
             </div>
-        </div>
+
+            <DeleteConfirmationModal
+                isOpen={confirmation.isOpen}
+                onClose={() => setConfirmation(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmation.onConfirm}
+                title={confirmation.title}
+                message={confirmation.message}
+                isDelete={confirmation.isDelete}
+            />
+        </div >
     );
 };

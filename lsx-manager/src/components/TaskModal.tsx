@@ -4,6 +4,7 @@ import type { LSXItem, Task, LSXData, ActivityLog, ProductType } from '../types'
 import { clsx } from 'clsx';
 import { printWorkOrder } from './WorkOrderSheet';
 import type { PrintConfig } from '../utils/printConfig';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 interface TaskModalProps {
     item: LSXItem;
@@ -32,6 +33,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
     const initialAssigneeRef = useRef<string>('');
     const addMenuRef = useRef<HTMLDivElement>(null);
+
+    const [confirmation, setConfirmation] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        isDelete: boolean;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        isDelete: true,
+    });
 
     // Close menu when clicking outside
     React.useEffect(() => {
@@ -110,16 +125,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         onUpdateTasks(item.id, updatedTasks);
     };
 
-    const handleApplyTemplate = () => {
-        const template = productTypes.find(t => t.id === selectedProductTypeId);
-        if (!template) return;
-
-        if ((item.tasks || []).length > 0) {
-            if (!confirm('Hành động này sẽ XÓA TOÀN BỘ các công đoạn hiện tại và thay thế bằng mẫu mới. Bạn có chắc chắn không?')) {
-                return;
-            }
-        }
-
+    const applyTemplateLogic = (template: ProductType) => {
         const newTasks: Task[] = template.tasks.map(taskName => ({
             id: crypto.randomUUID(),
             name: taskName,
@@ -140,6 +146,24 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 }
             });
         }
+    };
+
+    const handleApplyTemplate = () => {
+        const template = productTypes.find(t => t.id === selectedProductTypeId);
+        if (!template) return;
+
+        if ((item.tasks || []).length > 0) {
+            setConfirmation({
+                isOpen: true,
+                title: 'Áp dụng mẫu công đoạn',
+                message: 'Hành động này sẽ XÓA TOÀN BỘ các công đoạn hiện tại và thay thế bằng mẫu mới. Bạn có chắc chắn không?',
+                isDelete: true,
+                onConfirm: () => applyTemplateLogic(template)
+            });
+            return;
+        }
+
+        applyTemplateLogic(template);
     };
 
     const moveTask = (index: number, direction: 'up' | 'down') => {
@@ -389,6 +413,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     </div>
                 </div>
             </div>
-        </div>
+
+            <DeleteConfirmationModal
+                isOpen={confirmation.isOpen}
+                onClose={() => setConfirmation(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmation.onConfirm}
+                title={confirmation.title}
+                message={confirmation.message}
+                isDelete={confirmation.isDelete}
+            />
+        </div >
     );
 };
