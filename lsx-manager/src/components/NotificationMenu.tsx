@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { X, Calendar } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { ActivityLog } from '../types';
 
 interface NotificationMenuProps {
@@ -107,6 +107,11 @@ export const NotificationMenu: React.FC<NotificationMenuProps> = ({ logs, isOpen
                                             <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-mono font-bold">{group.orderName}</span>
                                             <span className="text-[10px] text-gray-400">{formatTime(latestLog.timestamp)}</span>
                                         </div>
+                                        {latestLog.performedBy && (
+                                            <span className="text-[10px] text-gray-400">
+                                                <span className="font-semibold text-gray-600">{latestLog.performedBy}</span>
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-col gap-1">

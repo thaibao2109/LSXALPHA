@@ -114,8 +114,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     };
 
     const deleteTask = (taskId: string) => {
+        const task = (item.tasks || []).find(t => t.id === taskId);
         const updatedTasks = (item.tasks || []).filter(t => t.id !== taskId);
         onUpdateTasks(item.id, updatedTasks);
+
+        if (onLogActivity && task) {
+            onLogActivity('item_edited', order.id!, order.meta.phieuXuat, {
+                itemId: item.id,
+                itemName: item.tenHangHoa,
+                details: {
+                    field: 'task_deleted',
+                    oldValue: task.name
+                }
+            });
+        }
     };
 
     const updateTaskTime = (taskId: string, field: 'startTime' | 'endTime', value: string) => {
@@ -123,6 +135,20 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             t.id === taskId ? { ...t, [field]: value } : t
         );
         onUpdateTasks(item.id, updatedTasks);
+
+        const task = (item.tasks || []).find(t => t.id === taskId);
+        if (onLogActivity && task) {
+            onLogActivity('task_time_set', order.id!, order.meta.phieuXuat, {
+                itemId: item.id,
+                itemName: item.tenHangHoa,
+                taskId: task.id,
+                taskName: task.name,
+                details: {
+                    field: field,
+                    newValue: value
+                }
+            });
+        }
     };
 
     const applyTemplateLogic = (template: ProductType) => {
@@ -184,6 +210,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         const newTask: Task = { id: crypto.randomUUID(), name: taskName, status: 'pending' };
         onUpdateTasks(item.id, [...(item.tasks || []), newTask]);
         setIsAddMenuOpen(false);
+
+        if (onLogActivity) {
+            onLogActivity('item_edited', order.id!, order.meta.phieuXuat, {
+                itemId: item.id,
+                itemName: item.tenHangHoa,
+                taskId: newTask.id,
+                taskName: newTask.name,
+                details: {
+                    field: 'task_added',
+                    newValue: taskName
+                }
+            });
+        }
     };
 
     return (

@@ -232,7 +232,7 @@ export const printWorkOrder = (order: LSXData, item: LSXItem, printConfig?: Prin
         return;
     }
 
-    const tasks = item.tasks || [];
+
 
     // Render component to string approach logic in simple HTML string
     printWindow.document.write(`

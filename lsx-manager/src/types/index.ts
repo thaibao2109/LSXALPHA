@@ -65,6 +65,8 @@ export interface ActivityLog {
         newValue?: any;
         assignee?: string;
     };
+    performedBy?: string; // User Name
+    role?: string;        // User Role
 }
 
 export interface ProductType {

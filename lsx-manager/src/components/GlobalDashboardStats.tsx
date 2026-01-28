@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Activity, Layers, Briefcase } from 'lucide-react';
+import { Package, Layers, Briefcase } from 'lucide-react';
 import type { LSXData } from '../types';
 
 interface GlobalDashboardStatsProps {

@@ -30,7 +30,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [previewData, setPreviewData] = useState<LSXData | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
     // Default columns
     const STORAGE_KEY = 'LSX_ORDER_LIST_COLUMNS';

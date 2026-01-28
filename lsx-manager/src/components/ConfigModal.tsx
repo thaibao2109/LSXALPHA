@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Settings, Printer, ListChecks, CheckSquare, Square, Tags, ArrowUp, ArrowDown, Copy, Pencil, Check } from 'lucide-react';
-import { AVAILABLE_SPECS, type PrintConfig, DEFAULT_PRINT_CONFIG } from '../utils/printConfig';
+import { X, Plus, Trash2, Printer, ListChecks, CheckSquare, Tags, ArrowUp, ArrowDown, Copy, Pencil, Check, Settings } from 'lucide-react';
+import { AVAILABLE_SPECS, type PrintConfig } from '../utils/printConfig';
 import type { ProductType } from '../types';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { clsx } from 'clsx';

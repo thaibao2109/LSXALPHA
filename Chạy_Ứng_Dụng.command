@@ -18,3 +18,9 @@ echo "------------------------------------------------"
 
 # Chạy ứng dụng (bao gồm cả Server và Web)
 npm run dev:all
+
+# Giữ cửa sổ mở nếu ứng dụng dừng
+echo ""
+echo "------------------------------------------------"
+echo "Ứng dụng đã dừng."
+read -p "Nhấn phím Enter để đóng cửa sổ này..."

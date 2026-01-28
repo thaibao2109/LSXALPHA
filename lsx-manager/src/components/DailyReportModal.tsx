@@ -137,6 +137,12 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({ logs, isOpen
                                                                 {getActionLabel(log.action)}
                                                             </span>
                                                             <span className="text-sm font-medium text-gray-700">{log.taskName}</span>
+                                                            {log.performedBy && (
+                                                                <span className="ml-auto text-xs text-gray-400">
+                                                                    Bởi: <span className="font-semibold text-gray-600">{log.performedBy}</span>
+                                                                    {log.role && <span className="text-[10px] ml-1 opacity-70">({log.role})</span>}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <div className="text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1 mt-1">
                                                             {log.details.assignee && (
