@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { LSXTable } from './LSXTable';
 import { TaskModal } from './TaskModal';
-import { DashboardStats } from './DashboardStats';
+
 import { ConfigModal } from './ConfigModal';
-import { ArrowLeft, Settings, Trash2, Download, ChevronLeft, ChevronRight, CheckSquare, X, ArrowDownToLine, Pencil, Save, Printer } from 'lucide-react';
+import { ArrowLeft, Settings, Trash2, Download, ChevronLeft, ChevronRight, CheckSquare, X, ArrowDownToLine, Pencil, Save, Printer, StickyNote } from 'lucide-react';
 import { exportOrderDetail } from '../utils/excelExport';
 import { printAllWorkOrders } from './WorkOrderSheet';
 import { uuid } from '../utils/uuid';
-import type { LSXData, LSXItem, Task, ActivityLog, ProductType, User } from '../types';
+import { formatDateWithRemaining } from '../utils/dateUtils';
+import type { LSXData, LSXItem, Task, ActivityLog, ProductType, User, Tool, OrderNote } from '../types';
 import type { PrintConfig } from '../utils/printConfig';
 
 interface OrderDetailViewProps {
@@ -26,6 +27,8 @@ interface OrderDetailViewProps {
 
     onNavigate?: (direction: 'prev' | 'next') => void;
     currentUser: User;
+    tools?: Tool[];
+    onUpdateTools?: (newTools: Tool[]) => void;
 }
 
 export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
@@ -42,11 +45,17 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
     hasPrevious = false,
     hasNext = false,
     onNavigate,
-    currentUser
+    currentUser,
+    tools,
+    onUpdateTools
 }) => {
     const [selectedItem, setSelectedItem] = useState<LSXItem | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+
+    // Notes State
+    const [newNoteContent, setNewNoteContent] = useState('');
+    const [isAddingNote, setIsAddingNote] = useState(false);
 
     const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
     const [selectedBulkTemplate, setSelectedBulkTemplate] = useState<string>('');
@@ -170,204 +179,332 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         onUpdate({ ...data, items: newItems });
     };
 
+    // --- Notes Logic ---
+    const handleAddNote = () => {
+        if (!newNoteContent.trim()) return;
+
+        const newNote: OrderNote = {
+            id: uuid(),
+            content: newNoteContent.trim(),
+            type: 'general', // Default for now, could add selector
+            createdAt: new Date().toISOString(),
+            createdBy: currentUser.name
+        };
+
+        const updatedNotes = data.notes ? [newNote, ...data.notes] : [newNote];
+        onUpdate({ ...data, notes: updatedNotes });
+        setNewNoteContent('');
+        setIsAddingNote(false);
+    };
+
+    const handleDeleteNote = (noteId: string) => {
+        if (!confirm('Bạn có chắc muốn xóa ghi chú này?')) return;
+        const updatedNotes = data.notes?.filter(n => n.id !== noteId) || [];
+        onUpdate({ ...data, notes: updatedNotes });
+    };
+
     const currentSelectedItem = selectedItem
         ? data.items.find(i => i.id === selectedItem.id) || selectedItem
         : null;
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 pb-12">
-            <header className="flex flex-col xl:flex-row justify-between xl:items-center gap-6">
-                <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-                    <div className="flex gap-2">
-                        <button
-                            onClick={onBack}
-                            className="w-12 h-12 flex items-center justify-center bg-white rounded-2xl shadow-soft hover:bg-brand-50 hover:text-brand-600 transition-all text-surface-500 border border-surface-100"
-                            title="Quay lại danh sách"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        {(onNavigate) && (
-                            <div className="flex bg-white rounded-2xl shadow-soft border border-surface-100 overflow-hidden">
-                                <button
-                                    onClick={() => onNavigate('prev')}
-                                    disabled={!hasPrevious}
-                                    className="w-12 h-12 flex items-center justify-center hover:bg-brand-50 hover:text-brand-600 transition-all text-surface-500 disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-surface-500 border-r border-surface-100"
-                                    title="Đơn hàng trước"
-                                >
-                                    <ChevronLeft className="w-5 h-5" />
-                                </button>
-                                <button
-                                    onClick={() => onNavigate('next')}
-                                    disabled={!hasNext}
-                                    className="w-12 h-12 flex items-center justify-center hover:bg-brand-50 hover:text-brand-600 transition-all text-surface-500 disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-surface-500"
-                                    title="Đơn hàng tiếp theo"
-                                >
-                                    <ChevronRight className="w-5 h-5" />
-                                </button>
+            <header className="flex flex-col gap-6">
+                <div className="flex flex-col xl:flex-row justify-between gap-6">
+                    <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+                        <div className="flex gap-2">
+                            <button
+                                onClick={onBack}
+                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white rounded-xl md:rounded-2xl shadow-soft hover:bg-brand-50 hover:text-brand-600 transition-all text-surface-500 border border-surface-100"
+                                title="Quay lại danh sách"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                            </button>
+                            {(onNavigate) && (
+                                <div className="flex bg-white rounded-xl md:rounded-2xl shadow-soft border border-surface-100 overflow-hidden h-10 md:h-12">
+                                    <button
+                                        onClick={() => onNavigate('prev')}
+                                        disabled={!hasPrevious}
+                                        className="w-10 md:w-12 flex items-center justify-center hover:bg-brand-50 hover:text-brand-600 transition-all text-surface-500 disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-surface-500 border-r border-surface-100"
+                                        title="Đơn hàng trước"
+                                    >
+                                        <ChevronLeft className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => onNavigate('next')}
+                                        disabled={!hasNext}
+                                        className="w-10 md:w-12 flex items-center justify-center hover:bg-brand-50 hover:text-brand-600 transition-all text-surface-500 disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-surface-500"
+                                        title="Đơn hàng tiếp theo"
+                                    >
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 text-xs font-bold text-surface-400 uppercase tracking-widest mb-1.5 ">
+                                <span>Lệnh sản xuất</span>
+                                <ChevronRight className="w-3 h-3" />
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        value={editForm.phieuXuat}
+                                        onChange={(e) => setEditForm({ ...editForm, phieuXuat: e.target.value })}
+                                        className="text-brand-600 border-b border-brand-300 focus:border-brand-600 outline-none bg-transparent px-1 py-0.5 w-32"
+                                    />
+                                ) : (
+                                    <span className="text-brand-600">{data.meta.phieuXuat}</span>
+                                )}
                             </div>
-                        )}
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2 text-xs font-bold text-surface-400 uppercase tracking-widest mb-1">
-                            <span>Lệnh sản xuất</span>
-                            <span>/</span>
+
                             {isEditing ? (
                                 <input
                                     type="text"
-                                    value={editForm.phieuXuat}
-                                    onChange={(e) => setEditForm({ ...editForm, phieuXuat: e.target.value })}
-                                    className="text-brand-600 border-b border-brand-300 focus:border-brand-600 outline-none bg-transparent px-1 py-0.5 w-32"
+                                    value={editForm.khachHang}
+                                    onChange={(e) => setEditForm({ ...editForm, khachHang: e.target.value })}
+                                    className="text-xl md:text-2xl font-extrabold text-surface-900 tracking-tight border-b-2 border-surface-200 focus:border-brand-500 outline-none bg-transparent w-full mb-3"
                                 />
                             ) : (
-                                <span className="text-brand-600">{data.meta.phieuXuat}</span>
+                                <h1 className="text-xl md:text-2xl font-extrabold text-surface-900 tracking-tight line-clamp-1 mb-3">{data.meta.khachHang}</h1>
                             )}
+
+                            {/* Metadata Inline */}
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-surface-600">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-surface-400 uppercase tracking-wider">Đơn số:</span>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={editForm.donHangSo || ''}
+                                            onChange={(e) => setEditForm({ ...editForm, donHangSo: e.target.value })}
+                                            className="font-medium text-surface-900 border-b border-surface-300 focus:border-brand-500 outline-none bg-transparent w-24"
+                                        />
+                                    ) : (
+                                        <span className="font-medium text-surface-900">{data.meta.donHangSo}</span>
+                                    )}
+                                </div>
+                                <div className="w-px h-3 bg-surface-300 hidden md:block" />
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-surface-400 uppercase tracking-wider">Giao ngày:</span>
+                                    {isEditing ? (
+                                        <input
+                                            type="date"
+                                            value={editForm.ngayGiaoHang}
+                                            onChange={(e) => setEditForm({ ...editForm, ngayGiaoHang: e.target.value })}
+                                            className="font-medium text-brand-600 border-b border-brand-300 focus:border-brand-600 outline-none bg-transparent"
+                                        />
+                                    ) : (
+                                        <span className={`font-medium ${new Date(data.meta.ngayGiaoHang) < new Date() ? 'text-red-600' : 'text-brand-600'}`}>
+                                            {formatDateWithRemaining(data.meta.ngayGiaoHang)}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="w-px h-3 bg-surface-300 hidden md:block" />
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-surface-400 uppercase tracking-wider">Phụ trách:</span>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={editForm.nguoiLap}
+                                            onChange={(e) => setEditForm({ ...editForm, nguoiLap: e.target.value })}
+                                            className="font-medium text-surface-900 border-b border-surface-300 focus:border-brand-500 outline-none bg-transparent w-32"
+                                        />
+                                    ) : (
+                                        <span className="font-medium text-surface-900">{data.meta.nguoiLap}</span>
+                                    )}
+                                </div>
+
+                                {/* Integrated Dashboard Stats */}
+                                <div className="w-px h-3 bg-surface-300 hidden md:block" />
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-surface-400 uppercase tracking-wider">SL:</span>
+                                        <span className="font-medium text-surface-900">
+                                            {data.items.reduce((sum, item) => sum + item.slYeuCau, 0).toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-surface-400 uppercase tracking-wider">Tiến độ:</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-16 h-1.5 bg-surface-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-brand-500 rounded-full transition-all"
+                                                    style={{
+                                                        width: `${data.items.length > 0 ? Math.round(data.items.reduce((acc, item) => {
+                                                            const tasks = item.tasks || [];
+                                                            if (tasks.length === 0) return acc;
+                                                            const completed = tasks.filter(t => t.status === 'completed').length;
+                                                            return acc + (completed / tasks.length) * 100;
+                                                        }, 0) / data.items.length) : 0}%`
+                                                    }}
+                                                />
+                                            </div>
+                                            <span className="font-bold text-xs text-brand-600">
+                                                {data.items.length > 0 ? Math.round(data.items.reduce((acc, item) => {
+                                                    const tasks = item.tasks || [];
+                                                    if (tasks.length === 0) return acc;
+                                                    const completed = tasks.filter(t => t.status === 'completed').length;
+                                                    return acc + (completed / tasks.length) * 100;
+                                                }, 0) / data.items.length) : 0}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+
+                    <div className="flex items-start gap-2">
                         {isEditing ? (
-                            <input
-                                type="text"
-                                value={editForm.khachHang}
-                                onChange={(e) => setEditForm({ ...editForm, khachHang: e.target.value })}
-                                className="text-2xl md:text-3xl font-extrabold text-surface-900 tracking-tight border-b-2 border-surface-200 focus:border-brand-500 outline-none bg-transparent w-full"
-                            />
+                            <>
+                                <button
+                                    onClick={handleSaveEdit}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-semibold active:scale-95 text-sm flex items-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    Lưu
+                                </button>
+                                <button
+                                    onClick={handleCancelEdit}
+                                    className="px-4 py-2 bg-surface-100 text-surface-600 rounded-lg hover:bg-surface-200 transition-all font-semibold active:scale-95 text-sm flex items-center gap-2"
+                                >
+                                    <X className="w-4 h-4" />
+                                    Hủy
+                                </button>
+                            </>
                         ) : (
-                            <h1 className="text-2xl md:text-3xl font-extrabold text-surface-900 tracking-tight line-clamp-1">{data.meta.khachHang}</h1>
+                            <>
+                                {currentUser.role === 'admin' && (
+                                    <button
+                                        onClick={handleStartEdit}
+                                        className="p-2 md:px-4 md:py-2 bg-white text-surface-600 rounded-lg hover:bg-surface-50 border border-surface-200 shadow-sm transition-all font-semibold active:scale-95 text-sm flex items-center gap-2"
+                                        title="Chỉnh sửa thông tin"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                        <span className="hidden md:inline">Sửa</span>
+                                    </button>
+                                )}
+                                <div className="w-px h-8 bg-surface-200 mx-1" />
+                                <button
+                                    onClick={() => exportOrderDetail(data)}
+                                    className="p-2 md:px-4 md:py-2 bg-white text-green-600 rounded-lg hover:bg-green-50 border border-green-200 shadow-sm transition-all font-semibold active:scale-95 text-sm flex items-center gap-2"
+                                    title="Xuất Excel"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    <span className="hidden md:inline">Excel</span>
+                                </button>
+                                <button
+                                    onClick={() => printAllWorkOrders(data, data.items, printConfig)}
+                                    className="p-2 md:px-4 md:py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 shadow-lg shadow-brand-100 transition-all font-semibold active:scale-95 text-sm flex items-center gap-2"
+                                    title="In phiếu"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    <span className="hidden md:inline">In Lệnh</span>
+                                </button>
+
+                                {currentUser.role === 'admin' && (
+                                    <>
+                                        <div className="w-px h-8 bg-surface-200 mx-1" />
+                                        <button
+                                            onClick={() => setIsConfigModalOpen(true)}
+                                            className="p-2 bg-white text-surface-500 rounded-lg hover:text-brand-600 border border-surface-200 shadow-sm transition-all"
+                                            title="Cấu hình"
+                                        >
+                                            <Settings className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={onDelete}
+                                            className="p-2 bg-white text-red-500 rounded-lg hover:bg-red-50 hover:text-red-600 border border-surface-200 shadow-sm transition-all"
+                                            title="Xóa đơn hàng"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
+            </header>
 
-
-
-                <div className="flex flex-wrap gap-2 md:gap-3">
-                    {isEditing ? (
-                        <>
-                            <button
-                                onClick={handleSaveEdit}
-                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-semibold active:scale-95 text-sm"
-                            >
-                                <Save className="w-4 h-4" />
-                                Lưu
-                            </button>
-                            <button
-                                onClick={handleCancelEdit}
-                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-surface-100 text-surface-600 rounded-xl hover:bg-surface-200 transition-all font-semibold active:scale-95 text-sm"
-                            >
-                                <X className="w-4 h-4" />
-                                Hủy
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            {currentUser.role === 'admin' && (
-                                <button
-                                    onClick={handleStartEdit}
-                                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-white text-brand-600 rounded-xl hover:bg-brand-50 border border-brand-100 shadow-sm transition-all font-semibold active:scale-95 text-sm"
-                                >
-                                    <Pencil className="w-4 h-4" />
-                                    Sửa
-                                </button>
-                            )}
-                            <div className="hidden md:block w-px h-10 bg-surface-200 mx-1" />
-                            <button
-                                onClick={() => exportOrderDetail(data)}
-                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-semibold active:scale-95 text-sm"
-                                title="Xuất Excel"
-                            >
-                                <Download className="w-4 h-4" />
-                                <span className="md:hidden">Xuất Excel</span>
-                            </button>
-                            <button
-                                onClick={() => printAllWorkOrders(data, data.items, printConfig)}
-                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all font-semibold active:scale-95 text-sm"
-                                title="In tất cả lệnh sản xuất"
-                            >
-                                <Printer className="w-4 h-4" />
-                                <span className="hidden md:inline">In Lệnh SX ({data.items.length})</span>
-                                <span className="md:hidden">In tất cả</span>
-                            </button>
-                            {currentUser.role === 'admin' && (
-                                <>
-                                    <button
-                                        onClick={() => setIsConfigModalOpen(true)}
-                                        className="p-3 bg-white text-surface-500 rounded-xl hover:text-brand-600 border border-surface-100 shadow-soft transition-all"
-                                        title="Cấu hình"
-                                    >
-                                        <Settings className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={onDelete}
-                                        className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white border border-red-100 shadow-soft transition-all"
-                                        title="Xóa đơn hàng"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
-                                </>
-                            )}
-                        </>
+            {/* Notes Section - Compact */}
+            <div className="bg-white border border-surface-200 rounded-xl overflow-hidden shadow-sm">
+                <div
+                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-50 transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                        <StickyNote className="w-4 h-4 text-surface-400" />
+                        <span className="text-sm font-bold text-surface-700 uppercase tracking-wide">Ghi chú</span>
+                        {data.notes && data.notes.length > 0 && (
+                            <span className="bg-surface-100 text-surface-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                                {data.notes.length}
+                            </span>
+                        )}
+                    </div>
+                    {!isAddingNote && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setIsAddingNote(true); }}
+                            className="text-xs font-bold text-brand-600 hover:text-brand-700 hover:underline px-2 py-1"
+                        >
+                            + Thêm ghi chú
+                        </button>
                     )}
                 </div>
-            </header >
 
-            <DashboardStats data={data} />
+                {(isAddingNote || (data.notes && data.notes.length > 0)) && (
+                    <div className="px-4 pb-4 border-t border-surface-100 bg-surface-50/50 pt-4">
+                        {isAddingNote && (
+                            <div className="mb-4">
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newNoteContent}
+                                        onChange={(e) => setNewNoteContent(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddNote(); }}
+                                        placeholder="Nhập ghi chú nhanh..."
+                                        className="flex-1 px-3 py-2 bg-white border border-surface-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+                                        autoFocus
+                                    />
+                                    <button
+                                        onClick={handleAddNote}
+                                        disabled={!newNoteContent.trim()}
+                                        className="px-3 py-2 bg-brand-600 text-white rounded-lg text-xs font-bold hover:bg-brand-700 disabled:opacity-50"
+                                    >
+                                        Lưu
+                                    </button>
+                                    <button
+                                        onClick={() => setIsAddingNote(false)}
+                                        className="px-3 py-2 bg-surface-200 text-surface-600 rounded-lg text-xs font-bold hover:bg-surface-300"
+                                    >
+                                        Hủy
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
-            <div className="premium-card p-8 group">
-                <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-xl font-bold text-surface-900">Thông tin chi tiết</h3>
-                    <span className="px-3 py-1 bg-surface-50 text-surface-500 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-surface-100">Meta Data</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <div className="space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-surface-400 tracking-widest">Số đơn hàng</span>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                value={editForm.donHangSo || ''}
-                                onChange={(e) => setEditForm({ ...editForm, donHangSo: e.target.value })}
-                                className="w-full text-lg font-bold text-surface-900 border-b border-surface-300 focus:border-brand-500 outline-none bg-transparent"
-                            />
-                        ) : (
-                            <div className="text-lg font-bold text-surface-900">{data.meta.donHangSo}</div>
-                        )}
+                        <div className="space-y-2">
+                            {data.notes?.map(note => (
+                                <div key={note.id} className="flex group items-start gap-3 text-sm bg-white p-2 rounded-lg border border-surface-100 shadow-sm">
+                                    <div className="min-w-[24px] h-6 rounded-full bg-surface-100 flex items-center justify-center text-[10px] font-bold text-surface-500">
+                                        {note.createdBy.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-surface-700 leading-snug">{note.content}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] text-surface-400 font-medium">{note.createdBy}</span>
+                                            <span className="text-[10px] text-surface-300">•</span>
+                                            <span className="text-[10px] text-surface-400">{new Date(note.createdAt).toLocaleString('vi-VN')}</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleDeleteNote(note.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 p-1">
+                                        <Trash2 className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-surface-400 tracking-widest">Ngày yêu cầu</span>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                value={editForm.ngayYeuCau}
-                                onChange={(e) => setEditForm({ ...editForm, ngayYeuCau: e.target.value })}
-                                className="w-full text-lg font-bold text-surface-900 border-b border-surface-300 focus:border-brand-500 outline-none bg-transparent"
-                            />
-                        ) : (
-                            <div className="text-lg font-bold text-surface-900">{data.meta.ngayYeuCau}</div>
-                        )}
-                    </div>
-                    <div className="space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-surface-400 tracking-widest">Ngày giao hàng</span>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                value={editForm.ngayGiaoHang}
-                                onChange={(e) => setEditForm({ ...editForm, ngayGiaoHang: e.target.value })}
-                                className="w-full text-lg font-bold text-brand-600 border-b border-brand-300 focus:border-brand-600 outline-none bg-transparent"
-                            />
-                        ) : (
-                            <div className="text-lg font-bold text-brand-600">{data.meta.ngayGiaoHang}</div>
-                        )}
-                    </div>
-                    <div className="space-y-1">
-                        <span className="text-[10px] uppercase font-bold text-surface-400 tracking-widest">Người phụ trách</span>
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                value={editForm.nguoiLap}
-                                onChange={(e) => setEditForm({ ...editForm, nguoiLap: e.target.value })}
-                                className="w-full text-lg font-bold text-surface-900 border-b border-surface-300 focus:border-brand-500 outline-none bg-transparent"
-                            />
-                        ) : (
-                            <div className="text-lg font-bold text-surface-900">{data.meta.nguoiLap}</div>
-                        )}
-                    </div>
-                </div>
+                )}
             </div>
 
             <div className="space-y-6">
@@ -484,6 +621,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 onUpdateTemplates={onUpdateTemplates}
                 productTypes={productTypes}
                 onUpdateProductTypes={onUpdateProductTypes}
+                tools={tools}
+                onUpdateTools={onUpdateTools}
             />
         </div >
     );

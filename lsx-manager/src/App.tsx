@@ -6,8 +6,9 @@ import { OrderDetailView } from './components/OrderDetailView';
 import { DailyReportModal } from './components/DailyReportModal';
 import { NotificationMenu } from './components/NotificationMenu';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
-import type { LSXData, ActivityLog, ProductType, User } from './types';
+import type { LSXData, ActivityLog, ProductType, User, Tool, MaterialTypeDefinition } from './types';
 import { LoginScreen } from './components/LoginScreen';
+import { ToolManagement } from './components/ToolManagement';
 import {
   Settings,
   FileText,
@@ -16,7 +17,8 @@ import {
   Search,
   LogOut,
   Menu,
-  X
+  X,
+  Hammer
 } from 'lucide-react';
 import { api } from './utils/api';
 import { uuid } from './utils/uuid';
@@ -26,8 +28,15 @@ const ORDERS_STORAGE_KEY = 'lsx_orders';
 const TEMPLATE_KEY = 'lsx_task_templates';
 const LOGS_STORAGE_KEY = 'lsx_activity_logs';
 const PRODUCT_TYPES_KEY = 'lsx_product_types';
-
 const DEFAULT_TEMPLATES = ["Cắt phôi", "Dập", "Tiện thô", "Tiện tinh", "Phay", "Khoan", "Nhiệt luyện", "Mạ", "Đóng gói"];
+
+const DEFAULT_MATERIAL_TYPES: MaterialTypeDefinition[] = [
+  { id: 'mold', code: 'MOLD', name: 'Khuôn' },
+  { id: 'die', code: 'DIE', name: 'Chày' },
+  { id: 'mortar', code: 'MORTAR', name: 'Cối' },
+  { id: 'rolling_wheel', code: 'RW', name: 'Bánh cán' },
+  { id: 'other', code: 'OTHER', name: 'Khác' }
+];
 
 // Wrapper for OrderDetailView to handle Routing params
 const OrderDetailRouteWrapper = ({
@@ -41,7 +50,9 @@ const OrderDetailRouteWrapper = ({
   printConfig,
   productTypes,
   onUpdateProductTypes,
-  currentUser
+  currentUser,
+  tools,
+  onUpdateTools
 }: any) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -80,6 +91,8 @@ const OrderDetailRouteWrapper = ({
       hasNext={hasNext}
       onNavigate={handleNavigate}
       currentUser={currentUser}
+      tools={tools}
+      onUpdateTools={onUpdateTools}
     />
   );
 };
@@ -106,6 +119,8 @@ function App() {
 
   const [taskTemplates, setTaskTemplates] = useState<string[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  const [materialTypes, setMaterialTypes] = useState<MaterialTypeDefinition[]>(DEFAULT_MATERIAL_TYPES);
+  const [tools, setTools] = useState<Tool[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
 
@@ -139,6 +154,8 @@ function App() {
       let dbProductTypes = await api.getSettings<ProductType[]>('product_types');
       let dbLogs = await api.getLogs();
       let dbPrintConfig = await api.getSettings<PrintConfig>('print_config');
+      let dbTools = await api.getSettings<Tool[]>('tools');
+      let dbMaterialTypes = await api.getSettings<MaterialTypeDefinition[]>('material_types');
 
       if (dbOrders.length === 0 && localOrders) {
         try {
@@ -181,6 +198,8 @@ function App() {
       setProductTypes(dbProductTypes || []);
       setActivityLogs(dbLogs);
       setPrintConfig(dbPrintConfig || DEFAULT_PRINT_CONFIG);
+      setTools(dbTools || []);
+      setMaterialTypes(dbMaterialTypes || DEFAULT_MATERIAL_TYPES);
     };
 
     initData();
@@ -203,6 +222,16 @@ function App() {
   const handleUpdateProductTypes = async (newProductTypes: ProductType[]) => {
     setProductTypes(newProductTypes);
     await api.saveSettings('product_types', newProductTypes);
+  };
+
+  const handleUpdateTools = async (newTools: Tool[]) => {
+    setTools(newTools);
+    await api.saveSettings('tools', newTools);
+  };
+
+  const handleUpdateMaterialTypes = async (newTypes: MaterialTypeDefinition[]) => {
+    setMaterialTypes(newTypes);
+    await api.saveSettings('material_types', newTypes);
   };
 
   const handleUpdatePrintConfig = async (newConfig: PrintConfig) => {
@@ -361,6 +390,7 @@ function App() {
   }
 
   const isOrderDetails = location.pathname.startsWith('/order/');
+  const isTools = location.pathname === '/tools';
 
   return (
     <div className="flex h-screen bg-surface-50 overflow-hidden">
@@ -396,11 +426,18 @@ function App() {
           <SidebarItem
             icon={ClipboardList}
             label="Lệnh sản xuất"
-            active={!isOrderDetails && location.pathname === '/'} // Active if at root
+            active={!isOrderDetails && !isTools && location.pathname === '/'} // Active if at root
             onClick={() => navigate('/')}
           />
 
+
           <div className="pt-6 text-[10px] font-bold text-surface-400 uppercase tracking-widest px-4 mb-2">Hệ thống</div>
+          <SidebarItem
+            icon={Hammer}
+            label="Quản lý Vật tư"
+            active={isTools}
+            onClick={() => navigate('/tools')}
+          />
           <SidebarItem
             icon={FileText}
             label="Báo cáo"
@@ -575,6 +612,16 @@ function App() {
                 productTypes={productTypes}
                 onUpdateProductTypes={handleUpdateProductTypes}
                 currentUser={user}
+                tools={tools}
+                onUpdateTools={handleUpdateTools}
+              />
+            } />
+            <Route path="/tools" element={
+              <ToolManagement
+                tools={tools}
+                onUpdateTools={handleUpdateTools}
+                materialTypes={materialTypes}
+                onUpdateMaterialTypes={handleUpdateMaterialTypes}
               />
             } />
           </Routes>

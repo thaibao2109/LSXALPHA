@@ -167,18 +167,9 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                             <div>
                                 <span className="text-gray-500 block mb-1">Ngày giao:</span>
                                 <input
-                                    type="text"
+                                    type="date"
                                     value={editedData.meta.ngayGiaoHang}
                                     onChange={(e) => handleMetaChange('ngayGiaoHang', e.target.value)}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded font-semibold text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <span className="text-gray-500 block mb-1">Ngày yêu cầu:</span>
-                                <input
-                                    type="text"
-                                    value={editedData.meta.ngayYeuCau || ''}
-                                    onChange={(e) => handleMetaChange('ngayYeuCau', e.target.value)}
                                     className="w-full px-2 py-1 border border-gray-300 rounded font-semibold text-gray-900 focus:ring-1 focus:ring-blue-500 outline-none"
                                 />
                             </div>

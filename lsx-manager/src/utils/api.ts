@@ -59,5 +59,23 @@ export const api = {
             const err = await res.text();
             throw new Error(`Failed to save settings: ${err || res.statusText}`);
         }
+    },
+
+    uploadFile: async (file: File): Promise<string> => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Upload failed: ${err || res.statusText}`);
+        }
+
+        const data = await res.json();
+        return data.url;
     }
 };

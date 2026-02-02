@@ -36,18 +36,7 @@ export interface Task {
     completed?: boolean;
 }
 
-export interface LSXData {
-    id?: string; // New: Unique ID for multi-order management
-    meta: {
-        phieuXuat: string;
-        ngayYeuCau: string;
-        nguoiLap: string;
-        donHangSo: string;
-        khachHang: string;
-        ngayGiaoHang: string;
-    };
-    items: LSXItem[];
-}
+
 
 export interface ActivityLog {
     id: string;
@@ -82,4 +71,49 @@ export interface User {
     username: string;
     name: string;
     role: Role;
+}
+
+// export type MaterialType = 'mold' | 'die' | 'mortar' | 'rolling_wheel' | 'other'; // Deprecated for dynamic types
+export type MaterialType = string;
+export type MaterialStatus = 'good' | 'maintenance' | 'broken' | 'disposed';
+
+export interface MaterialTypeDefinition {
+    id: string;
+    code: string;
+    name: string;
+}
+
+export interface Tool {
+    id: string;
+    code: string;
+    name: string;
+    type: MaterialType;
+    status: MaterialStatus;
+    drawing?: string; // URL or path to drawing
+    notes?: string;   // Renamed from compatibleProducts, string for general notes
+    // compatibleProducts kept for backward compatibility if needed, but logic will change
+    compatibleProducts?: string[];
+}
+
+export type NoteType = 'incident' | 'general';
+export interface OrderNote {
+    id: string;
+    content: string;
+    type: NoteType;
+    createdAt: string;
+    createdBy: string;
+}
+
+export interface LSXData {
+    id?: string; // New: Unique ID for multi-order management
+    meta: {
+        phieuXuat: string;
+        ngayYeuCau: string;
+        nguoiLap: string;
+        donHangSo: string;
+        khachHang: string;
+        ngayGiaoHang: string;
+    };
+    items: LSXItem[];
+    notes?: OrderNote[];
 }

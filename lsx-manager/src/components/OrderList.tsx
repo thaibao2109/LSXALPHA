@@ -5,13 +5,13 @@ import { ImportPreviewModal } from './ImportPreviewModal';
 import { parseODS } from '../utils/odsParser';
 import type { LSXData, User } from '../types';
 import { uuid } from '../utils/uuid';
+import { formatDateWithRemaining } from '../utils/dateUtils';
 
 const AVAILABLE_COLUMNS = [
     { key: 'donHangSo', label: 'Đơn Hàng' },
     { key: 'phieuXuat', label: 'Số Phiếu' },
     { key: 'khachHang', label: 'Khách Hàng' },
     { key: 'nguoiLap', label: 'Người Lập' },
-    { key: 'ngayYeuCau', label: 'Ngày Yêu Cầu' },
     { key: 'ngayGiaoHang', label: 'Ngày Giao' },
     { key: 'tienDo', label: 'Tiến Độ' },
     { key: 'trangThai', label: 'Trạng Thái' },
@@ -51,7 +51,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
         } catch (e) {
             console.error("Failed to load columns preference", e);
         }
-        return ['phieuXuat', 'khachHang', 'ngayYeuCau', 'ngayGiaoHang', 'tienDo', 'trangThai'];
+        return ['phieuXuat', 'khachHang', 'ngayGiaoHang', 'tienDo', 'trangThai'];
     });
 
     const [isColumnMenuOpen, setIsColumnMenuOpen] = useState(false);
@@ -91,8 +91,8 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
             case 'phieuXuat': return <span className="font-bold text-brand-600 group-hover:text-brand-700">{order.meta.phieuXuat}</span>;
             case 'khachHang': return <span className="font-medium text-surface-700">{order.meta.khachHang}</span>;
             case 'nguoiLap': return <span className="text-surface-500">{order.meta.nguoiLap}</span>;
-            case 'ngayYeuCau': return <span className="text-surface-500">{order.meta.ngayYeuCau}</span>;
-            case 'ngayGiaoHang': return <span className="text-surface-500">{order.meta.ngayGiaoHang}</span>;
+
+            case 'ngayGiaoHang': return <span className="text-surface-500">{formatDateWithRemaining(order.meta.ngayGiaoHang)}</span>;
             case 'tienDo': return (
                 <div className="flex items-center gap-2">
                     <div className="grow bg-surface-100 rounded-full h-1.5 overflow-hidden w-24">

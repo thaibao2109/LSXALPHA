@@ -16,6 +16,8 @@ interface ConfigModalProps {
     onUpdatePrintConfig?: (newConfig: PrintConfig) => void;
     productTypes?: ProductType[];
     onUpdateProductTypes?: (newTypes: ProductType[]) => void;
+    tools?: any[]; // Using any[] temporarily or importing Tool if possible, but to be safe and quick
+    onUpdateTools?: (newTools: any[]) => void;
 }
 
 export const ConfigModal: React.FC<ConfigModalProps> = ({
@@ -302,6 +304,8 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
         updateProductTypeTasks(newTasks);
     };
 
+
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[85vh]">
@@ -344,6 +348,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                         <ListChecks className="w-4 h-4" />
                         Quản lý Công đoạn
                     </button>
+
                     {printConfig && (
                         <button
                             onClick={() => setActiveTab('print')}
@@ -538,6 +543,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                             </div>
                         </div>
                     )}
+
 
                     {activeTab === 'tasks' && (
                         <>

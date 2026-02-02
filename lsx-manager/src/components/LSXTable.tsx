@@ -97,6 +97,7 @@ export const LSXTable: React.FC<LSXTableProps & {
                                         <div className="flex flex-col">
                                             <span className="text-sm font-bold text-surface-900 group-hover:text-brand-600 transition-colors">{item.tenHangHoa}</span>
                                             <span className="text-[10px] text-surface-400 font-medium">Mã hệ thống: {item.id.slice(0, 8)}</span>
+
                                         </div>
                                     </td>
                                     <td className="px-6 py-5 whitespace-nowrap">
