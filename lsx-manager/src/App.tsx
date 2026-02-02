@@ -14,9 +14,12 @@ import {
   ClipboardList,
   Bell,
   Search,
-  LogOut
+  LogOut,
+  Menu,
+  X
 } from 'lucide-react';
 import { api } from './utils/api';
+import { uuid } from './utils/uuid';
 import { DEFAULT_PRINT_CONFIG, type PrintConfig } from './utils/printConfig';
 
 const ORDERS_STORAGE_KEY = 'lsx_orders';
@@ -99,6 +102,7 @@ function App() {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const [taskTemplates, setTaskTemplates] = useState<string[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
@@ -208,7 +212,7 @@ function App() {
 
   const addLog = async (action: ActivityLog['action'], orderId: string, orderName: string, extraDetails: Partial<Omit<ActivityLog, 'id' | 'timestamp' | 'action' | 'orderId' | 'orderName'>>) => {
     const log: ActivityLog = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       timestamp: new Date().toISOString(),
       orderId,
       orderName,
@@ -226,19 +230,40 @@ function App() {
   };
 
   const handleImportOrder = async (newOrder: LSXData) => {
-    if (!newOrder.id) newOrder.id = crypto.randomUUID();
-    const updatedOrders = [newOrder, ...orders];
-    setOrders(updatedOrders);
-    await api.saveOrder(newOrder);
+    if (!newOrder.id) newOrder.id = uuid();
+
+    // Optimistic update
+    setOrders(prev => [newOrder, ...prev]);
+
+    try {
+      await api.saveOrder(newOrder);
+    } catch (error) {
+      console.error("Failed to save order:", error);
+      alert("Lỗi: Không thể lưu đơn hàng vào hệ thống! Vui lòng kiểm tra kết nối server.\n" + (error instanceof Error ? error.message : String(error)));
+      // Revert optimistic update
+      setOrders(prev => prev.filter(o => o.id !== newOrder.id));
+    }
   };
 
   const handleSelectOrder = (orderId: string) => {
     navigate(`/order/${orderId}`);
+    setIsMobileSidebarOpen(false); // Close sidebar on selection/navigate
   };
 
   const handleUpdateActiveOrder = async (updatedOrder: LSXData) => {
+    // Optimistic update
     setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-    await api.saveOrder(updatedOrder);
+
+    try {
+      await api.saveOrder(updatedOrder);
+    } catch (error) {
+      console.error("Failed to save order update:", error);
+      alert("Lỗi: Không thể lưu cập nhật! \n" + (error instanceof Error ? error.message : String(error)));
+      // Note: Reverting update is harder without keeping previous state ref. 
+      // For now, we fetch orders again to sync with server
+      const dbOrders = await api.getOrders();
+      setOrders(dbOrders);
+    }
   };
 
   // Logic needs ID now, not relying on activeOrderId
@@ -338,14 +363,35 @@ function App() {
   const isOrderDetails = location.pathname.startsWith('/order/');
 
   return (
-    <div className="flex h-screen bg-surface-50">
+    <div className="flex h-screen bg-surface-50 overflow-hidden">
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-surface-200 flex flex-col shrink-0">
-        <div className="p-6 flex justify-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
-          <img src="/logo-alpha.png" alt="Alpha Logo" className="h-12 w-auto object-contain mx-auto" />
+      <aside className={`
+        fixed md:static inset-y-0 left-0 z-50
+        w-[280px] md:w-64 bg-white border-r border-surface-200 flex flex-col shrink-0
+        transition-transform duration-300 ease-in-out
+        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-6 flex justify-between items-center">
+          <div className="flex justify-center cursor-pointer hover:opacity-80 transition-opacity w-full md:w-auto" onClick={() => navigate('/')}>
+            <img src="/logo-alpha.png" alt="Alpha Logo" className="h-10 md:h-12 w-auto object-contain mx-auto" />
+          </div>
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="md:hidden text-surface-400 hover:text-surface-600"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-1">
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
           <div className="text-[10px] font-bold text-surface-400 uppercase tracking-widest px-4 mb-2">Trung tâm</div>
           <SidebarItem
             icon={ClipboardList}
@@ -390,18 +436,25 @@ function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Top Header */}
-        <header className="h-20 bg-white border-b border-surface-200 flex items-center justify-between px-8 shrink-0">
-          <div className="flex items-center gap-4 flex-1 max-w-2xl">
+        <header className="h-16 md:h-20 bg-white border-b border-surface-200 flex items-center justify-between px-4 md:px-8 shrink-0 gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 max-w-2xl">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden p-2 -ml-2 text-surface-500 hover:bg-surface-50 rounded-lg"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
             <div className="relative w-full flex items-center bg-surface-50 rounded-2xl border border-surface-200 focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/10 transition-all duration-300 shadow-sm hover:shadow-md z-20">
 
               {/* Custom Dropdown Trigger */}
-              <div className="relative">
+              <div className="relative hidden md:block">
                 <button
                   onClick={() => setIsSearchMenuOpen(!isSearchMenuOpen)}
                   onBlur={() => setTimeout(() => setIsSearchMenuOpen(false), 200)}
-                  className="h-12 flex items-center gap-2 pl-4 pr-3 text-sm font-semibold text-surface-700 hover:bg-surface-100/50 rounded-l-2xl transition-colors border-r border-surface-200"
+                  className="h-10 md:h-12 flex items-center gap-2 pl-3 md:pl-4 pr-3 text-sm font-semibold text-surface-700 hover:bg-surface-100/50 rounded-l-2xl transition-colors border-r border-surface-200"
                 >
                   <span className="min-w-[90px] text-left">
                     {searchType === 'all' && 'Tất cả'}
@@ -457,7 +510,7 @@ function App() {
               </div>
 
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400 group-focus-within:text-brand-500 transition-colors" />
+                <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 md:w-5 h-4 md:h-5 text-surface-400 group-focus-within:text-brand-500 transition-colors" />
                 <input
                   type="text"
                   placeholder={
@@ -470,7 +523,7 @@ function App() {
                   }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-sm focus:ring-0 placeholder:text-surface-400 text-surface-900 font-medium h-12"
+                  className="w-full bg-transparent border-none py-2 md:py-3 pl-10 md:pl-12 pr-4 text-sm focus:ring-0 placeholder:text-surface-400 text-surface-900 font-medium h-10 md:h-12 rounded-lg md:rounded-none"
                 />
               </div>
             </div>
@@ -498,7 +551,7 @@ function App() {
         </header>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
           <Routes>
             <Route path="/" element={
               <OrderList

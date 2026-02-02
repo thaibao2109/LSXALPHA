@@ -66,18 +66,29 @@ export const parseODS = (file: File): Promise<LSXData> => {
                 const khachHang = getValue("Khách hàng");
                 const ngayGiaoHang = getValue("Ngày giao hàng");
 
+                // Helper to check if a cell matches any alias for a key
+                const isHeaderMatch = (cell: any, key: keyof typeof COLUMN_MAPPING): boolean => {
+                    const normalized = normalizeHeader(cell);
+                    return COLUMN_MAPPING[key].some(alias => normalized === alias || normalized.includes(alias));
+                };
+
                 // 2. Find Header Row
                 let headerRowIndex = -1;
                 for (let i = 0; i < jsonData.length; i++) {
                     const row = jsonData[i];
-                    if (row && row.some(cell => normalizeHeader(cell).includes('stt')) && row.some(cell => normalizeHeader(cell).includes('tên hàng'))) {
-                        headerRowIndex = i;
-                        break;
+                    // Flexible check: must contain at least STT *OR* Tên hàng hóa to be a candidate
+                    if (row && (row.some(cell => isHeaderMatch(cell, 'stt')) || row.some(cell => isHeaderMatch(cell, 'tenHangHoa')))) {
+                        // Stronger check: ideally both, but at least 'tenHangHoa' is critical if STT is missing or named weirdly
+                        // Let's require tenHangHoa as the anchor
+                        if (row.some(cell => isHeaderMatch(cell, 'tenHangHoa'))) {
+                            headerRowIndex = i;
+                            break;
+                        }
                     }
                 }
 
                 if (headerRowIndex === -1) {
-                    reject(new Error("Cannot find valid header row (must contain 'STT' and 'Tên hàng hóa')"));
+                    reject(new Error("Không tìm thấy dòng tiêu đề hợp lệ (phải chứa 'Tên hàng hóa' hoặc tương tự)"));
                     return;
                 }
 

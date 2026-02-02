@@ -4,6 +4,7 @@ import { GlobalDashboardStats } from './GlobalDashboardStats';
 import { ImportPreviewModal } from './ImportPreviewModal';
 import { parseODS } from '../utils/odsParser';
 import type { LSXData, User } from '../types';
+import { uuid } from '../utils/uuid';
 
 const AVAILABLE_COLUMNS = [
     { key: 'donHangSo', label: 'Đơn Hàng' },
@@ -30,6 +31,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [previewData, setPreviewData] = useState<LSXData | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [previewTitle, setPreviewTitle] = useState("Kiểm tra dữ liệu nhập");
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
     // Default columns
@@ -114,12 +116,31 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
         }
     };
 
+    const handleManualCreate = () => {
+        const newOrder: LSXData = {
+            id: uuid(),
+            meta: {
+                phieuXuat: '',
+                khachHang: '',
+                donHangSo: '',
+                ngayGiaoHang: '',
+                ngayYeuCau: '',
+                nguoiLap: currentUser.name || '',
+            },
+            items: []
+        };
+        setPreviewData(newOrder);
+        setPreviewTitle("Tạo đơn hàng mới");
+        setIsPreviewOpen(true);
+    };
+
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             try {
                 const data = await parseODS(file);
                 setPreviewData(data);
+                setPreviewTitle("Kiểm tra dữ liệu nhập");
                 setIsPreviewOpen(true);
             } catch (err) {
                 console.error(err);
@@ -145,26 +166,37 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Context Header */}
-            <div className="flex justify-between items-end">
+            <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-surface-900 tracking-tight">
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-surface-900 tracking-tight">
                         {isDashboardView ? "Trạng thái sản xuất" : "Quản lý Đơn hàng"}
                     </h1>
-                    <p className="text-surface-500 mt-1">
+                    <p className="text-sm md:text-base text-surface-500 mt-1">
                         {isDashboardView
                             ? "Thống kê tổng quan và các đơn hàng gần đây"
                             : `Tổng cộng ${orders.length} lệnh sản xuất đang được theo dõi`}
                     </p>
                 </div>
-                {!isDashboardView && currentUser.role === 'admin' && (
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-100 transition-all font-semibold active:scale-95"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Nhập đơn mới
-                    </button>
-                )}
+                <div className="flex gap-3 w-full md:w-auto">
+                    {!isDashboardView && currentUser.role === 'admin' && (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleManualCreate}
+                                className="flex items-center justify-center gap-2 px-4 py-3 bg-white text-brand-600 border border-brand-200 rounded-xl hover:bg-brand-50 hover:border-brand-300 shadow-sm transition-all font-semibold active:scale-95"
+                            >
+                                <Plus className="w-5 h-5" />
+                                <span className="whitespace-nowrap">Tạo thủ công</span>
+                            </button>
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-100 transition-all font-semibold active:scale-95"
+                            >
+                                <FileText className="w-5 h-5" />
+                                <span className="whitespace-nowrap">Nhập file</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -177,7 +209,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
             <GlobalDashboardStats orders={orders} />
 
             <div>
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <h2 className="text-xl font-bold text-surface-900 flex items-center gap-2">
                         {isDashboardView ? "Lệnh sản xuất gần đây" : "Danh sách lệnh sản xuất"}
                         <span className="bg-surface-100 text-surface-600 px-2 py-0.5 rounded-lg text-xs font-bold">
@@ -185,7 +217,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
                         </span>
                     </h2>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 self-end md:self-auto">
                         {!isDashboardView && (
                             <div className="flex bg-surface-100 p-1 rounded-xl items-center">
                                 {/* Column Toggle */}
@@ -379,6 +411,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
                 isOpen={isPreviewOpen}
                 onConfirm={handleConfirmImport}
                 onCancel={handleCancelImport}
+                title={previewTitle}
             />
         </div>
     );

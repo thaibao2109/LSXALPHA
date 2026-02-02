@@ -8,9 +8,10 @@ interface ImportPreviewModalProps {
     isOpen: boolean;
     onConfirm: (editedData: LSXData) => void;
     onCancel: () => void;
+    title?: string;
 }
 
-export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, isOpen, onConfirm, onCancel }) => {
+export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, isOpen, onConfirm, onCancel, title }) => {
     const [editedData, setEditedData] = useState<LSXData | null>(data);
 
     const [confirmation, setConfirmation] = useState<{
@@ -121,7 +122,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                             <AlertCircle className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900">Kiểm tra dữ liệu nhập</h2>
+                            <h2 className="text-xl font-bold text-gray-900">{title || "Kiểm tra dữ liệu nhập"}</h2>
                             <p className="text-sm text-gray-500">Xem trước và chỉnh sửa trước khi xác nhận</p>
                         </div>
                     </div>

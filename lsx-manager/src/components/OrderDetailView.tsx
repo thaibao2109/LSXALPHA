@@ -3,8 +3,10 @@ import { LSXTable } from './LSXTable';
 import { TaskModal } from './TaskModal';
 import { DashboardStats } from './DashboardStats';
 import { ConfigModal } from './ConfigModal';
-import { ArrowLeft, Settings, Trash2, Download, ChevronLeft, ChevronRight, CheckSquare, X, ArrowDownToLine, Pencil, Save } from 'lucide-react';
+import { ArrowLeft, Settings, Trash2, Download, ChevronLeft, ChevronRight, CheckSquare, X, ArrowDownToLine, Pencil, Save, Printer } from 'lucide-react';
 import { exportOrderDetail } from '../utils/excelExport';
+import { printAllWorkOrders } from './WorkOrderSheet';
+import { uuid } from '../utils/uuid';
 import type { LSXData, LSXItem, Task, ActivityLog, ProductType, User } from '../types';
 import type { PrintConfig } from '../utils/printConfig';
 
@@ -85,7 +87,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         if (!selectedType) return; // Should not happen
 
         const newTasks: Task[] = selectedType.tasks.map(taskName => ({
-            id: crypto.randomUUID(),
+            id: uuid(),
             name: taskName,
             status: 'pending'
         }));
@@ -106,7 +108,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 // Determine if we should append or replace. For now, let's replace existing tasks if any, or maybe append?
                 // The requirement says "Áp dụng Mẫu Loại Sản Phẩm", usually implies setting the state. 
                 // Let's replace to be safe and consistent with "Template".
-                return { ...item, tasks: newTasks.map(t => ({ ...t, id: crypto.randomUUID() })) }; // Clone tasks for each item
+                return { ...item, tasks: newTasks.map(t => ({ ...t, id: uuid() })) }; // Clone tasks for each item
             }
             return item;
         });
@@ -174,8 +176,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 pb-12">
-            <header className="flex justify-between items-center">
-                <div className="flex items-center gap-6">
+            <header className="flex flex-col xl:flex-row justify-between xl:items-center gap-6">
+                <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
                     <div className="flex gap-2">
                         <button
                             onClick={onBack}
@@ -225,29 +227,29 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                 type="text"
                                 value={editForm.khachHang}
                                 onChange={(e) => setEditForm({ ...editForm, khachHang: e.target.value })}
-                                className="text-3xl font-extrabold text-surface-900 tracking-tight border-b-2 border-surface-200 focus:border-brand-500 outline-none bg-transparent w-full"
+                                className="text-2xl md:text-3xl font-extrabold text-surface-900 tracking-tight border-b-2 border-surface-200 focus:border-brand-500 outline-none bg-transparent w-full"
                             />
                         ) : (
-                            <h1 className="text-3xl font-extrabold text-surface-900 tracking-tight">{data.meta.khachHang}</h1>
+                            <h1 className="text-2xl md:text-3xl font-extrabold text-surface-900 tracking-tight line-clamp-1">{data.meta.khachHang}</h1>
                         )}
                     </div>
                 </div>
 
 
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-2 md:gap-3">
                     {isEditing ? (
                         <>
                             <button
                                 onClick={handleSaveEdit}
-                                className="flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-semibold active:scale-95 text-sm"
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-semibold active:scale-95 text-sm"
                             >
                                 <Save className="w-4 h-4" />
                                 Lưu
                             </button>
                             <button
                                 onClick={handleCancelEdit}
-                                className="flex items-center gap-2 px-4 py-3 bg-surface-100 text-surface-600 rounded-xl hover:bg-surface-200 transition-all font-semibold active:scale-95 text-sm"
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-surface-100 text-surface-600 rounded-xl hover:bg-surface-200 transition-all font-semibold active:scale-95 text-sm"
                             >
                                 <X className="w-4 h-4" />
                                 Hủy
@@ -258,19 +260,29 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                             {currentUser.role === 'admin' && (
                                 <button
                                     onClick={handleStartEdit}
-                                    className="flex items-center gap-2 px-4 py-3 bg-white text-brand-600 rounded-xl hover:bg-brand-50 border border-brand-100 shadow-sm transition-all font-semibold active:scale-95 text-sm"
+                                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-white text-brand-600 rounded-xl hover:bg-brand-50 border border-brand-100 shadow-sm transition-all font-semibold active:scale-95 text-sm"
                                 >
                                     <Pencil className="w-4 h-4" />
                                     Sửa
                                 </button>
                             )}
-                            <div className="w-px h-10 bg-surface-200 mx-1" />
+                            <div className="hidden md:block w-px h-10 bg-surface-200 mx-1" />
                             <button
                                 onClick={() => exportOrderDetail(data)}
-                                className="flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-semibold active:scale-95 text-sm"
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-semibold active:scale-95 text-sm"
                                 title="Xuất Excel"
                             >
                                 <Download className="w-4 h-4" />
+                                <span className="md:hidden">Xuất Excel</span>
+                            </button>
+                            <button
+                                onClick={() => printAllWorkOrders(data, data.items, printConfig)}
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all font-semibold active:scale-95 text-sm"
+                                title="In tất cả lệnh sản xuất"
+                            >
+                                <Printer className="w-4 h-4" />
+                                <span className="hidden md:inline">In Lệnh SX ({data.items.length})</span>
+                                <span className="md:hidden">In tất cả</span>
                             </button>
                             {currentUser.role === 'admin' && (
                                 <>
@@ -376,21 +388,29 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             {/* Bulk Action Bar */}
             {
                 selectedItemIds.size > 0 && (
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-surface-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 z-50 animate-in slide-in-from-bottom-4 duration-300 border border-surface-700">
-                        <div className="flex items-center gap-3 pr-6 border-r border-surface-700">
-                            <div className="bg-brand-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
-                                {selectedItemIds.size}
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-surface-900 text-white px-4 md:px-6 py-4 rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-4 md:gap-6 z-50 animate-in slide-in-from-bottom-4 duration-300 border border-surface-700 w-[95%] md:w-auto max-w-full">
+                        <div className="flex items-center justify-between w-full md:w-auto gap-3 md:pr-6 border-b md:border-b-0 md:border-r border-surface-700 pb-3 md:pb-0">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-brand-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                                    {selectedItemIds.size}
+                                </div>
+                                <span className="font-medium text-sm">Đã chọn</span>
                             </div>
-                            <span className="font-medium text-sm">Đã chọn</span>
+                            <button
+                                onClick={() => setSelectedItemIds(new Set())}
+                                className="md:hidden p-2 hover:bg-surface-800 rounded-lg text-surface-400 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
                             {/* Group 1: Apply Template */}
-                            <div className="flex items-center gap-2 border-r border-surface-700 pr-4">
+                            <div className="flex items-center gap-2 w-full md:w-auto border-b md:border-b-0 md:border-r border-surface-700 pb-3 md:pb-0 md:pr-4">
                                 <select
                                     value={selectedBulkTemplate}
                                     onChange={(e) => setSelectedBulkTemplate(e.target.value)}
-                                    className="bg-surface-800 border-surface-600 text-white text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block p-2.5 min-w-[180px]"
+                                    className="bg-surface-800 border-surface-600 text-white text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block p-2.5 flex-1 md:min-w-[180px]"
                                 >
                                     <option value="">Mẫu sản phẩm...</option>
                                     {productTypes?.map(type => (
@@ -403,16 +423,16 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                     className="px-3 py-2 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
                                 >
                                     <ArrowDownToLine className="w-4 h-4" />
-                                    Áp dụng
+                                    <span className="md:hidden">Áp dụng</span>
                                 </button>
                             </div>
 
                             {/* Group 2: Mark Complete */}
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 w-full md:w-auto">
                                 <select
                                     value={selectedBulkTask}
                                     onChange={(e) => setSelectedBulkTask(e.target.value)}
-                                    className="bg-surface-800 border-surface-600 text-white text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block p-2.5 min-w-[180px]"
+                                    className="bg-surface-800 border-surface-600 text-white text-sm rounded-lg focus:ring-brand-500 focus:border-brand-500 block p-2.5 flex-1 md:min-w-[180px]"
                                 >
                                     <option value="">Chọn công đoạn...</option>
                                     {taskTemplates.map(task => (
@@ -425,13 +445,13 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                     className="px-3 py-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
                                 >
                                     <CheckSquare className="w-4 h-4" />
-                                    Hoàn thành
+                                    <span className="md:hidden">Hoàn thành</span>
                                 </button>
                             </div>
 
                             <button
                                 onClick={() => setSelectedItemIds(new Set())}
-                                className="p-2 ml-2 hover:bg-surface-800 rounded-lg text-surface-400 hover:text-white transition-colors"
+                                className="hidden md:block p-2 ml-2 hover:bg-surface-800 rounded-lg text-surface-400 hover:text-white transition-colors"
                                 title="Hủy chọn"
                             >
                                 <X className="w-5 h-5" />

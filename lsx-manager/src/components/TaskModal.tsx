@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { X, Trash2, CheckCircle2, Circle, Printer, ArrowDownToLine, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { uuid } from '../utils/uuid';
 import type { LSXItem, Task, LSXData, ActivityLog, ProductType } from '../types';
 import { clsx } from 'clsx';
 import { printWorkOrder } from './WorkOrderSheet';
@@ -153,7 +154,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
     const applyTemplateLogic = (template: ProductType) => {
         const newTasks: Task[] = template.tasks.map(taskName => ({
-            id: crypto.randomUUID(),
+            id: uuid(),
             name: taskName,
             status: 'pending'
         }));
@@ -207,7 +208,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     };
 
     const addTask = (taskName: string) => {
-        const newTask: Task = { id: crypto.randomUUID(), name: taskName, status: 'pending' };
+        const newTask: Task = { id: uuid(), name: taskName, status: 'pending' };
         onUpdateTasks(item.id, [...(item.tasks || []), newTask]);
         setIsAddMenuOpen(false);
 

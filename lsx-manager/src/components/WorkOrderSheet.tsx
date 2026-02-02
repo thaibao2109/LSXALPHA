@@ -223,8 +223,13 @@ export const WorkOrderSheet: React.FC<WorkOrderSheetProps> = ({ order, item, pri
     );
 };
 
-// Helper function to open print window
+// Helper to open print window
 export const printWorkOrder = (order: LSXData, item: LSXItem, printConfig?: PrintConfig) => {
+    printAllWorkOrders(order, [item], printConfig);
+};
+
+
+export const printAllWorkOrders = (order: LSXData, items: LSXItem[], printConfig?: PrintConfig) => {
     const config = printConfig || DEFAULT_PRINT_CONFIG;
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -232,20 +237,27 @@ export const printWorkOrder = (order: LSXData, item: LSXItem, printConfig?: Prin
         return;
     }
 
+    const contentHTML = items.map((item, index) => {
+        const itemHTML = generateWorkOrderHTML(order, item, config);
+        // Add page break after each item except the last one
+        return `
+            <div style="${index < items.length - 1 ? 'page-break-after: always;' : ''}">
+                ${itemHTML}
+            </div>
+        `;
+    }).join('');
 
-
-    // Render component to string approach logic in simple HTML string
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Lệnh SX - ${item.tenHangHoa}</title>
+            <title>In Lệnh Sản Xuất</title>
             <style>
                 @media print {
                     @page {
                         size: A5 landscape;
-                        margin: 5mm;
+                        margin: 2mm; 
                     }
                     body {
                         margin: 0;
@@ -270,7 +282,7 @@ export const printWorkOrder = (order: LSXData, item: LSXItem, printConfig?: Prin
             </style>
         </head>
         <body>
-            ${generateWorkOrderHTML(order, item, config)}
+            ${contentHTML}
             <script>
                 window.onload = function() {
                     window.print();
@@ -286,54 +298,54 @@ const generateWorkOrderHTML = (order: LSXData, item: LSXItem, printConfig: Print
     const tasks = item.tasks || [];
 
     return `
-        <div style="width: 200mm; margin: 0 auto;">
+        <div style="width: 200mm; margin: 0 auto; padding-top: 5px;">
             
             <!-- HEADER -->
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h1 style="margin: 0 0 5px 0; font-size: 20pt; text-transform: uppercase;">LỆNH SẢN XUẤT / PHIẾU THEO DÕI QT</h1>
-                <div style="font-size: 11pt; font-style: italic;">
+            <div style="text-align: center; margin-bottom: 10px;">
+                <h1 style="margin: 0 0 2px 0; font-size: 16pt; text-transform: uppercase;">LỆNH SẢN XUẤT / PHIẾU THEO DÕI QT</h1>
+                <div style="font-size: 10pt; font-style: italic;">
                     Số phiếu: <strong>${order.meta.phieuXuat}</strong> | Ngày in: ${new Date().toLocaleDateString('vi-VN')}
                 </div>
             </div>
 
             <!-- INFO TABLE -->
-            <table style="width: 100%; border: 1px solid #000; margin-bottom: 20px; font-size: 11pt;">
+            <table style="width: 100%; border: 1px solid #000; margin-bottom: 15px; font-size: 10pt;">
                 <tr>
-                    <td style="width: 15%; background: #eee; font-weight: bold;">Khách hàng</td>
-                    <td style="width: 35%">${order.meta.khachHang}</td>
-                    <td style="width: 15%; background: #eee; font-weight: bold;">Ngày giao</td>
-                    <td style="width: 35%">${order.meta.ngayGiaoHang}</td>
+                    <td style="width: 15%; background: #eee; font-weight: bold; padding: 3px 5px;">Khách hàng</td>
+                    <td style="width: 35%; padding: 3px 5px;">${order.meta.khachHang}</td>
+                    <td style="width: 15%; background: #eee; font-weight: bold; padding: 3px 5px;">Ngày giao</td>
+                    <td style="width: 35%; padding: 3px 5px;">${order.meta.ngayGiaoHang}</td>
                 </tr>
                 <tr>
-                    <td style="background: #eee; font-weight: bold;">Tên hàng</td>
-                    <td colspan="3" style="font-weight: bold; font-size: 13pt;">${item.tenHangHoa}</td>
+                    <td style="background: #eee; font-weight: bold; padding: 3px 5px;">Tên hàng</td>
+                    <td colspan="3" style="font-weight: bold; font-size: 12pt; padding: 3px 5px;">${item.tenHangHoa}</td>
                 </tr>
                 <tr>
-                    <td style="background: #eee; font-weight: bold;">Quy cách</td>
-                    <td>${item.quyCach}</td>
-                    <td style="background: #eee; font-weight: bold;">Số lượng</td>
-                     <td>
-                        <strong style="font-size: 14pt;">${item.slYeuCau}</strong> ${item.donVi}
-                        ${item.slDuPhong ? `<span style="font-size: 10pt; margin-left: 10px;">(Dự phòng: ${item.slDuPhong})</span>` : ''}
+                    <td style="background: #eee; font-weight: bold; padding: 3px 5px;">Quy cách</td>
+                    <td style="padding: 3px 5px;">${item.quyCach}</td>
+                    <td style="background: #eee; font-weight: bold; padding: 3px 5px;">Số lượng</td>
+                     <td style="padding: 3px 5px;">
+                        <strong style="font-size: 12pt;">${item.slYeuCau}</strong> ${item.donVi}
+                        ${item.slDuPhong ? `<span style="font-size: 9pt; margin-left: 8px;">(Dự phòng: ${item.slDuPhong})</span>` : ''}
                     </td>
                 </tr>
                 ${item.vatLieu ? `
                 <tr>
-                    <td style="background: #eee; font-weight: bold;">Vật liệu</td>
-                    <td colspan="3">${item.vatLieu} ${item.quyCachPhoi ? `- Phôi: ${item.quyCachPhoi}` : ''}</td>
+                    <td style="background: #eee; font-weight: bold; padding: 3px 5px;">Vật liệu</td>
+                    <td colspan="3" style="padding: 3px 5px;">${item.vatLieu} ${item.quyCachPhoi ? `- Phôi: ${item.quyCachPhoi}` : ''}</td>
                 </tr>
                 ` : ''}
             </table>
 
             <!-- TASKS TABLE -->
-            <table style="width: 100%; border: 1px solid #000; margin-bottom: 20px; font-size: 11pt;">
+            <table style="width: 100%; border: 1px solid #000; margin-bottom: 0; font-size: 10pt;">
                 <thead>
                     <tr style="background: #eee;">
-                        <th style="width: 40px; text-align: center;">STT</th>
-                        <th style="width: 140px; text-align: left;">Công Đoạn</th>
-                        <th style="text-align: left;">Thông số / Yêu cầu Kỹ thuật</th>
-                        <th style="width: 120px; text-align: center;">Thực hiện</th>
-                        <th style="width: 80px; text-align: center;">Ký tên</th>
+                        <th style="width: 35px; text-align: center; padding: 4px;">STT</th>
+                        <th style="width: 130px; text-align: left; padding: 4px;">Công Đoạn</th>
+                        <th style="text-align: left; padding: 4px;">Thông số / Yêu cầu Kỹ thuật</th>
+                        <th style="width: 100px; text-align: center; padding: 4px;">Thực hiện</th>
+                        <th style="width: 70px; text-align: center; padding: 4px;">Ký tên</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -341,40 +353,29 @@ const generateWorkOrderHTML = (order: LSXData, item: LSXItem, printConfig: Print
         const specs = getRelevantSpecs(item, task.name, printConfig);
         return `
                             <tr>
-                                <td style="text-align: center;">${index + 1}</td>
-                                <td style="font-weight: bold;">${task.name}</td>
-                                <td>
+                                <td style="text-align: center; padding: 4px;">${index + 1}</td>
+                                <td style="font-weight: bold; padding: 4px;">${task.name}</td>
+                                <td style="padding: 4px;">
                                     ${specs.length > 0 ? `
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10pt;">
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px; font-size: 9.5pt;">
                                             ${specs.map(spec => `
                                                 <div style="white-space: nowrap;">
                                                     <span style="color: #444;">${spec.label}:</span> <b>${spec.value}</b>
                                                 </div>
                                             `).join('')}
                                         </div>
-                                    ` : '<div style="height: 20px; border-bottom: 1px dotted #ccc;"></div>'}
+                                    ` : '<div style="height: 15px; border-bottom: 1px dotted #ccc;"></div>'}
                                 </td>
-                                <td style="font-size: 10pt; text-align: center;">
+                                <td style="font-size: 9pt; text-align: center; padding: 4px;">
                                     ${task.assignee || ''}<br/>
-                                    <span style="color: #666; font-size: 9pt;">${task.startTime ? new Date(task.startTime).toLocaleDateString('vi-VN') : ''}</span>
+                                    <span style="color: #666; font-size: 8pt;">${task.startTime ? new Date(task.startTime).toLocaleDateString('vi-VN') : ''}</span>
                                 </td>
                                 <td></td>
                             </tr>
                         `;
-    }).join('') : `<tr><td colspan="5" style="text-align: center; padding: 20px;">Chưa có công đoạn nào</td></tr>`}
+    }).join('') : `<tr><td colspan="5" style="text-align: center; padding: 15px;">Chưa có công đoạn nào</td></tr>`}
                 </tbody>
             </table>
-
-            <!-- NOTES SECTION -->
-            <div style="border: 1px solid #000; padding: 10px; margin-bottom: 20px; min-height: 50px;">
-                <strong>Ghi chú / Phát sinh:</strong>
-                <br/><br/>
-            </div>
-            
-             <div style="margin-top: 10px; font-size: 11pt;">
-                <strong>Người Lập Phiếu:</strong> ${order.meta.nguoiLap}
-            </div>
-
         </div>
     `;
 };

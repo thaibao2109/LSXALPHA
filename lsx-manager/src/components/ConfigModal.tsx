@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2, Printer, ListChecks, CheckSquare, Tags, ArrowUp, ArrowDown, Copy, Pencil, Check, Settings } from 'lucide-react';
+import { uuid } from '../utils/uuid';
 import { AVAILABLE_SPECS, type PrintConfig } from '../utils/printConfig';
 import type { ProductType } from '../types';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
@@ -202,7 +203,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
         if (!newProductTypeName.trim() || !onUpdateProductTypes) return;
 
         const newType: ProductType = {
-            id: crypto.randomUUID(),
+            id: uuid(),
             name: newProductTypeName.trim(),
             tasks: []
         };
@@ -235,7 +236,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
         if (!onUpdateProductTypes) return;
 
         const newType: ProductType = {
-            id: crypto.randomUUID(),
+            id: uuid(),
             name: `${typeToClone.name} - Copy`,
             tasks: [...typeToClone.tasks]
         };
