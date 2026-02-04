@@ -247,6 +247,18 @@ export const printAllWorkOrders = (order: LSXData, items: LSXItem[], printConfig
         `;
     }).join('');
 
+    // Generate Cover Page if multiple items are being printed
+    let finalContentHTML = contentHTML;
+    if (items.length > 1) {
+        const coverPageHTML = generateCoverPageHTML(order, items.length);
+        finalContentHTML = `
+            <div style="page-break-after: always;">
+                ${coverPageHTML}
+            </div>
+            ${contentHTML}
+        `;
+    }
+
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -282,7 +294,7 @@ export const printAllWorkOrders = (order: LSXData, items: LSXItem[], printConfig
             </style>
         </head>
         <body>
-            ${contentHTML}
+            ${finalContentHTML}
             <script>
                 window.onload = function() {
                     window.print();
@@ -376,6 +388,43 @@ const generateWorkOrderHTML = (order: LSXData, item: LSXItem, printConfig: Print
     }).join('') : `<tr><td colspan="5" style="text-align: center; padding: 15px;">Chưa có công đoạn nào</td></tr>`}
                 </tbody>
             </table>
+        </div>
+    `;
+};
+
+const generateCoverPageHTML = (order: LSXData, totalItems: number): string => {
+    return `
+        <div style="width: 200mm; margin: 0 auto; padding-top: 20px; height: 90vh; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 2px double #000; padding: 20px;">
+            
+            <div style="text-align: center; margin-bottom: 40px;">
+                <h1 style="margin: 0 0 10px 0; font-size: 32pt; text-transform: uppercase;">LỆNH SẢN XUẤT</h1>
+                <div style="width: 100px; height: 2px; bg-color: #000; margin: 0 auto 20px auto;"></div>
+                <h2 style="margin: 0; font-size: 26pt; font-weight: bold;">Đơn: ${order.meta.donHangSo}</h2>
+            </div>
+
+            <div style="width: 80%; font-size: 16pt; line-height: 1.8;">
+                <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999;">
+                    <strong style="width: 180px;">Khách hàng:</strong>
+                    <span>${order.meta.khachHang}</span>
+                </div>
+                <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999;">
+                    <strong style="width: 180px;">Phiếu xuất:</strong>
+                    <span>${order.meta.phieuXuat}</span>
+                </div>
+                <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999;">
+                    <strong style="width: 180px;">Ngày giao:</strong>
+                    <span>${order.meta.ngayGiaoHang ? new Date(order.meta.ngayGiaoHang).toLocaleDateString('vi-VN') : '...'}</span>
+                </div>
+                <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999;">
+                    <strong style="width: 180px;">Tổng số mục:</strong>
+                    <span>${totalItems} sản phẩm</span>
+                </div>
+                <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999;">
+                   <strong style="width: 180px;">Người lập:</strong>
+                   <span>${order.meta.nguoiLap}</span>
+               </div>
+            </div>
+
         </div>
     `;
 };

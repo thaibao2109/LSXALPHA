@@ -255,7 +255,30 @@ function App() {
       role: user?.role || 'unknown'
     };
     setActivityLogs(prev => [log, ...prev].slice(0, 10000));
+    setActivityLogs(prev => [log, ...prev].slice(0, 10000));
     await api.saveLog(log);
+  };
+
+  const handleCompleteOrder = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const updatedOrder = { ...order, status: 'completed' as const };
+
+    // Optimistic update
+    setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+
+    try {
+      await api.saveOrder(updatedOrder);
+      addLog('item_edited', order.id!, order.meta.phieuXuat, {
+        details: { field: 'status', newValue: 'completed' }
+      });
+    } catch (error) {
+      console.error("Failed to complete order:", error);
+      alert("Lỗi: Không thể cập nhật trạng thái đơn hàng! \n" + (error instanceof Error ? error.message : String(error)));
+      // Revert
+      setOrders(prev => prev.map(o => o.id === orderId ? order : o));
+    }
   };
 
   const handleImportOrder = async (newOrder: LSXData) => {
@@ -319,6 +342,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'all' | 'order' | 'customer' | 'product' | 'product_name' | 'size'>('all');
   const [isSearchMenuOpen, setIsSearchMenuOpen] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // Search logic
   const filteredOrders = orders.filter(order => {
@@ -367,6 +391,11 @@ function App() {
         // Combined search for 'all'
         return matchOrder() || matchCustomer() || matchProductCode() || matchProductName() || matchSize();
     }
+  }).filter(order => {
+    // Hide completed orders unless searching or explicitly shown
+    if (searchQuery.trim()) return true;
+    if (showCompleted) return true;
+    return order.status !== 'completed';
   });
 
   // --- UI Components ---
@@ -595,6 +624,9 @@ function App() {
                 orders={filteredOrders}
                 onSelectOrder={handleSelectOrder}
                 onImportOrder={handleImportOrder}
+                onCompleteOrder={handleCompleteOrder}
+                showCompleted={showCompleted}
+                onToggleShowCompleted={() => setShowCompleted(!showCompleted)}
                 isDashboardView={false} // Default view
                 currentUser={user}
               />

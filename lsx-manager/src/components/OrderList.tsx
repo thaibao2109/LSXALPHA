@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { FileText, ChevronRight, Plus, Search, LayoutGrid, List, Eye, Check } from 'lucide-react';
+import { FileText, ChevronRight, Plus, Search, LayoutGrid, List, Eye, Check, CheckCircle } from 'lucide-react';
 import { GlobalDashboardStats } from './GlobalDashboardStats';
 import { ImportPreviewModal } from './ImportPreviewModal';
 import { parseODS } from '../utils/odsParser';
@@ -25,9 +25,12 @@ interface OrderListProps {
     onImportOrder: (data: LSXData) => void;
     isDashboardView?: boolean;
     currentUser: User;
+    onCompleteOrder?: (orderId: string) => void;
+    showCompleted?: boolean;
+    onToggleShowCompleted?: () => void;
 }
 
-export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onImportOrder, isDashboardView, currentUser }) => {
+export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onImportOrder, isDashboardView, currentUser, onCompleteOrder, showCompleted, onToggleShowCompleted }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [previewData, setPreviewData] = useState<LSXData | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -105,12 +108,26 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
                 </div>
             );
             case 'trangThai': return (
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${progress === 100 ? 'bg-green-100 text-green-700' :
-                    progress > 0 ? 'bg-orange-100 text-orange-700' :
-                        'bg-surface-100 text-surface-500'
-                    }`}>
-                    {progress === 100 ? 'Hoàn thành' : progress > 0 ? 'Đang chạy' : 'Mới'}
-                </span>
+                progress === 100 && !isDashboardView && onCompleteOrder ? (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Xác nhận hoàn thành đơn hàng? Đơn hàng sẽ được ẩn khỏi danh sách.')) {
+                                if (order.id) onCompleteOrder(order.id);
+                            }
+                        }}
+                        className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 hover:bg-green-200 transition-colors shadow-sm"
+                    >
+                        Hoàn thành
+                    </button>
+                ) : (
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${progress === 100 ? 'bg-green-100 text-green-700' :
+                        progress > 0 ? 'bg-orange-100 text-orange-700' :
+                            'bg-surface-100 text-surface-500'
+                        }`}>
+                        {progress === 100 ? 'Đã xong' : progress > 0 ? 'Đang chạy' : 'Mới'}
+                    </span>
+                )
             );
             default: return null;
         }
@@ -218,6 +235,16 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
                     </h2>
 
                     <div className="flex items-center gap-4 self-end md:self-auto">
+                        {!isDashboardView && onToggleShowCompleted && (
+                            <button
+                                onClick={onToggleShowCompleted}
+                                className={`p-2 rounded-lg transition-all flex items-center gap-2 ${showCompleted ? 'bg-green-50 text-green-700 shadow-sm ring-1 ring-green-200' : 'text-surface-500 hover:text-surface-900 bg-surface-100'}`}
+                                title={showCompleted ? "Ẩn đơn đã hoàn thành" : "Hiện đơn đã hoàn thành"}
+                            >
+                                {showCompleted ? <CheckCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5 opacity-50" />}
+                                <span className="text-xs font-semibold hidden md:inline">Đã xong</span>
+                            </button>
+                        )}
                         {!isDashboardView && (
                             <div className="flex bg-surface-100 p-1 rounded-xl items-center">
                                 {/* Column Toggle */}
@@ -318,8 +345,21 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onSelectOrder, onI
                                                     ? 'bg-green-100 text-green-700'
                                                     : progress > 0 ? 'bg-orange-100 text-orange-700' : 'bg-surface-100 text-surface-600'
                                                     }`}>
-                                                    {progress === 100 ? 'Hoàn thành' : progress > 0 ? 'Đang chạy' : 'Chưa bắt đầu'}
+                                                    {progress === 100 ? 'Đã xong' : progress > 0 ? 'Đang chạy' : 'Chưa bắt đầu'}
                                                 </div>
+                                                {progress === 100 && !isDashboardView && onCompleteOrder && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (window.confirm('Xác nhận hoàn thành đơn hàng?')) {
+                                                                if (order.id) onCompleteOrder(order.id);
+                                                            }
+                                                        }}
+                                                        className="ml-2 px-2 py-1 rounded-lg bg-green-500 text-white text-[10px] font-bold uppercase hover:bg-green-600 shadow-sm"
+                                                    >
+                                                        Hoàn thành
+                                                    </button>
+                                                )}
                                             </div>
 
                                             <h3 className="text-lg font-bold text-surface-900 group-hover:text-brand-600 transition-colors line-clamp-1 mb-1" title={order.meta.phieuXuat}>

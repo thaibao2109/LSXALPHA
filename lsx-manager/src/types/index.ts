@@ -114,6 +114,7 @@ export interface LSXData {
         khachHang: string;
         ngayGiaoHang: string;
     };
+    status?: 'active' | 'completed';
     items: LSXItem[];
     notes?: OrderNote[];
 }
