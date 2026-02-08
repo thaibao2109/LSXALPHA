@@ -6,6 +6,7 @@ import { ConfigModal } from './ConfigModal';
 import { ArrowLeft, Settings, Trash2, Download, ChevronLeft, ChevronRight, CheckSquare, X, ArrowDownToLine, Pencil, Save, Printer, StickyNote } from 'lucide-react';
 import { exportOrderDetail } from '../utils/excelExport';
 import { printAllWorkOrders } from './WorkOrderSheet';
+import { printHandoverMinutes } from './HandoverPrint';
 import { uuid } from '../utils/uuid';
 import { formatDateWithRemaining } from '../utils/dateUtils';
 import type { LSXData, LSXItem, Task, ActivityLog, ProductType, User, Tool, OrderNote } from '../types';
@@ -327,9 +328,9 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-bold text-surface-400 uppercase tracking-wider">Tiến độ:</span>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 bg-surface-200 rounded-full overflow-hidden">
+                                            <div className="w-16 h-1.5 bg-surface-200 rounded-full overflow-hidden flex">
                                                 <div
-                                                    className="h-full bg-brand-500 rounded-full transition-all"
+                                                    className="h-full bg-green-500 transition-all"
                                                     style={{
                                                         width: `${data.items.length > 0 ? Math.round(data.items.reduce((acc, item) => {
                                                             const tasks = item.tasks || [];
@@ -338,6 +339,19 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                                             return acc + (completed / tasks.length) * 100;
                                                         }, 0) / data.items.length) : 0}%`
                                                     }}
+                                                    title="Hoàn thành"
+                                                />
+                                                <div
+                                                    className="h-full bg-blue-500 transition-all"
+                                                    style={{
+                                                        width: `${data.items.length > 0 ? Math.round(data.items.reduce((acc, item) => {
+                                                            const tasks = item.tasks || [];
+                                                            if (tasks.length === 0) return acc;
+                                                            const inProgress = tasks.filter(t => t.status === 'in_progress').length;
+                                                            return acc + (inProgress / tasks.length) * 100;
+                                                        }, 0) / data.items.length) : 0}%`
+                                                    }}
+                                                    title="Đang thực hiện"
                                                 />
                                             </div>
                                             <span className="font-bold text-xs text-brand-600">
@@ -583,6 +597,21 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                 >
                                     <CheckSquare className="w-4 h-4" />
                                     <span className="md:hidden">Hoàn thành</span>
+                                </button>
+                            </div>
+
+                            {/* Group 3: Print Handover */}
+                            <div className="flex items-center gap-2 w-full md:w-auto border-l border-surface-700 pl-3 ml-3">
+                                <button
+                                    onClick={() => {
+                                        const selectedItemsList = data.items.filter(i => selectedItemIds.has(i.id));
+                                        printHandoverMinutes(data, selectedItemsList);
+                                    }}
+                                    className="px-3 py-2 bg-white text-surface-900 hover:bg-surface-100 active:bg-surface-200 rounded-lg font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
+                                    title="In biên bản bàn giao"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    <span className="hidden md:inline">Bàn giao</span>
                                 </button>
                             </div>
 

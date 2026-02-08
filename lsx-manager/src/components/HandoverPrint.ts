@@ -1,0 +1,172 @@
+import type { LSXData, LSXItem } from '../types';
+
+export const printHandoverMinutes = (order: LSXData, items: LSXItem[]) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert('Vui lòng cho phép popup để in phiếu');
+        return;
+    }
+
+    const contentHTML = generateHandoverHTML(order, items);
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Biên Bản Bàn Giao</title>
+            <style>
+                @media print {
+                    @page {
+                        size: A5 landscape;
+                        margin: 10mm; 
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        -webkit-print-color-adjust: exact;
+                    }
+                }
+                body {
+                    font-family: 'Times New Roman', Times, serif;
+                    background: white;
+                    color: black;
+                    line-height: 1.3;
+                }
+                .container {
+                    width: 100%;
+                    max-width: 210mm;
+                    margin: 0 auto;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                .title {
+                    font-size: 20pt;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    margin-bottom: 5px;
+                }
+                .meta-info {
+                    margin-bottom: 20px;
+                }
+                .meta-row {
+                    display: flex;
+                    margin-bottom: 8px;
+                }
+                .meta-label {
+                    font-weight: bold;
+                    width: 120px;
+                }
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin-bottom: 30px;
+                }
+                th, td {
+                    border: 1px solid #000;
+                    padding: 8px;
+                    vertical-align: middle;
+                    font-size: 11pt;
+                }
+                th {
+                    background-color: #f0f0f0;
+                    font-weight: bold;
+                    text-align: center;
+                }
+                .footer {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-top: 40px;
+                    padding: 0 40px;
+                }
+                .signature-block {
+                    text-align: center;
+                    width: 200px;
+                }
+                .signature-title {
+                    font-weight: bold;
+                    margin-bottom: 60px;
+                    text-transform: uppercase;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                ${contentHTML}
+            </div>
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+};
+
+const generateHandoverHTML = (order: LSXData, items: LSXItem[]): string => {
+    return `
+        <div class="header">
+            <div class="title">BIÊN BẢN BÀN GIAO BÁN THÀNH PHẨM</div>
+            <div style="font-style: italic;">Ngày: ${new Date().toLocaleDateString('vi-VN')}</div>
+        </div>
+
+        <div class="meta-info">
+            <div class="meta-row">
+                <span class="meta-label">Khách hàng:</span>
+                <span>${order.meta.khachHang}</span>
+            </div>
+             <div class="meta-row">
+                <span class="meta-label">Đơn hàng số:</span>
+                <span>${order.meta.donHangSo}</span>
+            </div>
+              <div class="meta-row">
+                <span class="meta-label">Phiếu xuất:</span>
+                <span>${order.meta.phieuXuat}</span>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50px;">STT</th>
+                    <th>Tên sản phẩm</th>
+                    <th style="width: 150px;">Kích thước / Quy cách</th>
+                    <th style="width: 80px;">Số lượng</th>
+                    <th style="width: 100px;">QC Kiểm tra</th>
+                    <th>Ghi chú</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${items.map((item, index) => `
+                    <tr>
+                        <td style="text-align: center;">${index + 1}</td>
+                        <td>
+                            <strong>${item.tenHangHoa}</strong>
+                        </td>
+                        <td style="text-align: center;">${item.quyCach}</td>
+                        <td style="text-align: center;">
+                            <strong>${item.slYeuCau}</strong> ${item.donVi}
+                        </td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <div class="signature-block">
+                <div class="signature-title">Người giao</div>
+                <div>(Ký, ghi rõ họ tên)</div>
+            </div>
+            <div class="signature-block">
+                <div class="signature-title">Người nhận</div>
+                <div>(Ký, ghi rõ họ tên)</div>
+            </div>
+        </div>
+    `;
+};

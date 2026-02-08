@@ -126,11 +126,15 @@ export const LSXTable: React.FC<LSXTableProps & {
                                                             key={task.id}
                                                             className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[10px] font-bold uppercase tracking-tight ${task.status === 'completed'
                                                                 ? 'bg-green-50 text-green-700 border-green-200'
-                                                                : 'bg-surface-50 text-surface-500 border-surface-200'
+                                                                : task.status === 'in_progress'
+                                                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                                                    : 'bg-surface-50 text-surface-500 border-surface-200'
                                                                 }`}
                                                         >
                                                             {task.status === 'completed' ? (
                                                                 <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                                                            ) : task.status === 'in_progress' ? (
+                                                                <Circle className="w-3.5 h-3.5 text-blue-600 fill-current" />
                                                             ) : (
                                                                 <Circle className="w-3.5 h-3.5 text-surface-300" />
                                                             )}
