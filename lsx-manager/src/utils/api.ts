@@ -1,81 +1,67 @@
 import type { LSXData, ActivityLog } from '../types';
 
+import { db, storage } from './firebase';
+import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, orderBy, limit } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 export const api = {
     // Orders
     getOrders: async (): Promise<LSXData[]> => {
-        const res = await fetch('/api/orders');
-        if (!res.ok) throw new Error(`Failed to fetch orders: ${res.statusText}`);
-        return res.json();
+        const querySnapshot = await getDocs(collection(db, "orders"));
+        return querySnapshot.docs.map(doc => doc.data() as LSXData);
     },
     saveOrder: async (order: LSXData) => {
-        const res = await fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(order)
-        });
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`Failed to save order: ${err || res.statusText}`);
-        }
+        if (!order.id) throw new Error("Order ID is required");
+        await setDoc(doc(db, "orders", order.id), order);
     },
     deleteOrder: async (id: string) => {
-        const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`Failed to delete order: ${err || res.statusText}`);
-        }
+        await deleteDoc(doc(db, "orders", id));
     },
 
     // Logs
     getLogs: async (): Promise<ActivityLog[]> => {
-        const res = await fetch('/api/logs');
-        if (!res.ok) throw new Error(`Failed to fetch logs: ${res.statusText}`);
-        return res.json();
+        const q = query(collection(db, "activity_logs"), orderBy("timestamp", "desc"), limit(100));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as ActivityLog);
     },
     saveLog: async (log: ActivityLog) => {
-        const res = await fetch('/api/logs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(log)
-        });
-        if (!res.ok) {
-            console.error("Failed to save log", await res.text());
-        }
+        if (!log.id) console.error("Log ID is required");
+        else await setDoc(doc(db, "activity_logs", log.id), log);
     },
 
     // Settings
     getSettings: async <T>(key: string): Promise<T | null> => {
-        const res = await fetch(`/api/settings/${key}`);
-        if (!res.ok) return null; // Settings might not exist
-        return res.json();
-    },
-    saveSettings: async <T>(key: string, value: T) => {
-        const res = await fetch(`/api/settings/${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(value)
-        });
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`Failed to save settings: ${err || res.statusText}`);
+        const docRef = doc(db, "settings", key);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return (docSnap.data() as { value: T }).value;
+        } else {
+            return null;
         }
     },
+    saveSettings: async <T extends object>(key: string, value: T) => {
+        // Firestore requires usage of objects, so value must be an object.
+        // If T is primitive, we might need a wrapper, but looking at usage (arrays, objects), it should be fine mostly.
+        // However, looking at the code, we are casting doc.data() as T.
+        // If we save an array as the root document data, Firestore might complain or wrap it?
+        // Firestore documents are objects. If 'value' is an array, we should probably wrap it in { value: ... }
+        // BUT to keep it simple and consistent with previous implementation: 
+        // The previous implementation stored valid JSON.
+        // Let's store it as { data: value } to always have an object root, and unwrap it.
+        // Wait, if I change the storage format, I need to be careful.
+        // Let's stick to storing the object directly if T is an object.
+        // If T is an array, Firestore does not support array as root.
+        // USAGE CHECK: 'product_types' is ProductType[] (Array). 'task_templates' is string[] (Array).
+        // So we MUST wrap arrays.
+        // Let's wrap EVERYTHING in a 'value' field for settings to be safe and consistent.
+
+        await setDoc(doc(db, "settings", key), { value });
+    },
+    // We need to fix getSettings to unwrap the 'value'
 
     uploadFile: async (file: File): Promise<string> => {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const res = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (!res.ok) {
-            const err = await res.text();
-            throw new Error(`Upload failed: ${err || res.statusText}`);
-        }
-
-        const data = await res.json();
-        return data.url;
+        const storageRef = ref(storage, 'uploads/' + Date.now() + '-' + file.name);
+        const snapshot = await uploadBytes(storageRef, file);
+        return await getDownloadURL(snapshot.ref);
     }
 };
