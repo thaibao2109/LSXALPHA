@@ -440,7 +440,7 @@ function App() {
       `}>
         <div className="p-6 flex justify-between items-center">
           <div className="flex justify-center cursor-pointer hover:opacity-80 transition-opacity w-full md:w-auto" onClick={() => navigate('/')}>
-            <img src="/logo-alpha.png" alt="Alpha Logo" className="h-10 md:h-12 w-auto object-contain mx-auto" />
+            <img src={`${import.meta.env.BASE_URL}logo-alpha.png`} alt="Alpha Logo" className="h-10 md:h-12 w-auto object-contain mx-auto" />
           </div>
           <button
             onClick={() => setIsMobileSidebarOpen(false)}
