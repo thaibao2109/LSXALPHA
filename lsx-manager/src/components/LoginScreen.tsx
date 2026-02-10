@@ -11,26 +11,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        if (username === 'admin' && password === 'admin') {
-            onLogin({
-                id: '1',
-                username: 'admin',
-                name: 'Quản trị viên',
-                role: 'admin'
-            });
-        } else if (username === 'manager' && password === 'manager') {
-            onLogin({
-                id: '2',
-                username: 'manager',
-                name: 'Quản lý xưởng',
-                role: 'manager'
-            });
-        } else {
-            setError('Sai tên đăng nhập hoặc mật khẩu');
+        try {
+            const user = await import('../utils/api').then(m => m.api.login(username, password));
+            if (user) {
+                onLogin(user);
+            } else {
+                setError('Sai tên đăng nhập hoặc mật khẩu');
+            }
+        } catch (err) {
+            console.error("Login error:", err);
+            setError('Đã xảy ra lỗi khi đăng nhập');
         }
     };
 

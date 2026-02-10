@@ -1,7 +1,7 @@
 import type { LSXData, ActivityLog } from '../types';
 
 import { db, storage } from './firebase';
-import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, orderBy, limit, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export const api = {
@@ -63,5 +63,44 @@ export const api = {
         const storageRef = ref(storage, 'uploads/' + Date.now() + '-' + file.name);
         const snapshot = await uploadBytes(storageRef, file);
         return await getDownloadURL(snapshot.ref);
+    },
+
+    // User Management
+    login: async (username: string, password: string): Promise<import('../types').User | null> => {
+        const q = query(collection(db, "users"), where("username", "==", username));
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) return null;
+
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+
+        // Simple password check (in a real app, use hashing or Firebase Auth)
+        if (userData.password === password) {
+            // Return user without password
+            const { password, ...user } = userData;
+            return user as import('../types').User;
+        }
+        return null;
+    },
+    getUsers: async (): Promise<import('../types').User[]> => {
+        const querySnapshot = await getDocs(collection(db, "users"));
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            // detailed user info but maybe exclude password or keep it if needed for edit (though usually we don't send it back)
+            // For this simple management app, we might check password matching on client or keep it simple.
+            // Let's return everything for now so admin can see/manage.
+            return data as import('../types').User & { password?: string };
+        });
+    },
+    saveUser: async (user: import('../types').User & { password?: string }) => {
+        // Use username as doc ID for uniqueness assurance by Firestore if we wanted, 
+        // but let's strictly use the 'id' field if we want or just generate one?
+        // Plan said "Document ID: username".
+        // Let's enforce Document ID = username.
+        if (!user.username) throw new Error("Username is required");
+        await setDoc(doc(db, "users", user.username), user);
+    },
+    deleteUser: async (username: string) => {
+        await deleteDoc(doc(db, "users", username));
     }
 };

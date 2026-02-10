@@ -9,6 +9,7 @@ import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
 import type { LSXData, ActivityLog, ProductType, User, Tool, MaterialTypeDefinition } from './types';
 import { LoginScreen } from './components/LoginScreen';
 import { ToolManagement } from './components/ToolManagement';
+import { UserManagement } from './components/UserManagement';
 import {
   Settings,
   FileText,
@@ -18,7 +19,8 @@ import {
   LogOut,
   Menu,
   X,
-  Hammer
+  Hammer,
+  Users
 } from 'lucide-react';
 import { api } from './utils/api';
 import { uuid } from './utils/uuid';
@@ -200,7 +202,30 @@ function App() {
       setPrintConfig(dbPrintConfig || DEFAULT_PRINT_CONFIG);
       setTools(dbTools || []);
       setMaterialTypes(dbMaterialTypes || DEFAULT_MATERIAL_TYPES);
+
+
+      // Check and create default admin
+      const users = await api.getUsers();
+      if (users.length === 0) {
+        console.log("No users found. Creating default admin.");
+        await api.saveUser({
+          id: 'admin',
+          username: 'admin',
+          name: 'Administrator',
+          role: 'admin',
+          password: 'admin'
+        });
+        // Also create default manager
+        await api.saveUser({
+          id: 'manager',
+          username: 'manager',
+          name: 'Manager',
+          role: 'manager',
+          password: 'manager'
+        });
+      }
     };
+
 
     initData();
   }, []);
@@ -479,6 +504,14 @@ function App() {
               onClick={() => setIsConfigModalOpen(true)}
             />
           )}
+          {user?.role === 'admin' && (
+            <SidebarItem
+              icon={Users}
+              label="Q.lý người dùng"
+              active={location.pathname === '/users'}
+              onClick={() => navigate('/users')}
+            />
+          )}
         </nav>
 
         <div className="p-4 mt-auto">
@@ -655,6 +688,9 @@ function App() {
                 materialTypes={materialTypes}
                 onUpdateMaterialTypes={handleUpdateMaterialTypes}
               />
+            } />
+            <Route path="/users" element={
+              <UserManagement currentUser={user} />
             } />
           </Routes>
         </div>

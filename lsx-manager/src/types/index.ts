@@ -72,6 +72,7 @@ export interface User {
     username: string;
     name: string;
     role: Role;
+    password?: string;
 }
 
 // export type MaterialType = 'mold' | 'die' | 'mortar' | 'rolling_wheel' | 'other'; // Deprecated for dynamic types
