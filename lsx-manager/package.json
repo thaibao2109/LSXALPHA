@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "ship": "git add . && git commit -m 'Auto deploy' && git push && npm run deploy"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2",
