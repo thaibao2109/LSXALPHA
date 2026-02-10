@@ -291,6 +291,16 @@ export const printAllWorkOrders = (order: LSXData, items: LSXItem[], printConfig
                     padding: 4px 6px;
                     vertical-align: top;
                 }
+                .watermark {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 60%;
+                    opacity: 0.15;
+                    z-index: 0;
+                    pointer-events: none;
+                }
             </style>
         </head>
         <body>
@@ -310,7 +320,8 @@ const generateWorkOrderHTML = (order: LSXData, item: LSXItem, printConfig: Print
     const tasks = item.tasks || [];
 
     return `
-        <div style="width: 200mm; margin: 0 auto; padding-top: 5px;">
+        <div style="width: 200mm; margin: 0 auto; padding-top: 5px; position: relative;">
+            <img src="${window.location.origin}${import.meta.env.BASE_URL}logo-alpha.png" class="watermark" />
             
             <!-- HEADER -->
             <div style="text-align: center; margin-bottom: 10px;">

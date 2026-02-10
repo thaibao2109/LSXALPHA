@@ -59,6 +59,16 @@ export const printHandoverMinutes = (order: LSXData, items: LSXItem[]) => {
                     font-weight: bold;
                     width: 120px;
                 }
+                .watermark {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 60%;
+                    opacity: 0.15;
+                    z-index: 0;
+                    pointer-events: none;
+                }
                 table {
                     border-collapse: collapse;
                     width: 100%;
@@ -109,6 +119,7 @@ export const printHandoverMinutes = (order: LSXData, items: LSXItem[]) => {
 
 const generateHandoverHTML = (order: LSXData, items: LSXItem[]): string => {
     return `
+        <img src="${window.location.origin}${import.meta.env.BASE_URL}logo-alpha.png" class="watermark" />
         <div class="header">
             <div class="title">BIÊN BẢN BÀN GIAO BÁN THÀNH PHẨM</div>
             <div style="font-style: italic;">Ngày: ${new Date().toLocaleDateString('vi-VN')}</div>
@@ -119,9 +130,9 @@ const generateHandoverHTML = (order: LSXData, items: LSXItem[]): string => {
                 <span class="meta-label">Khách hàng:</span>
                 <span>${order.meta.khachHang}</span>
             </div>
-             <div class="meta-row">
+             <div class="meta-row" style="align-items: center;">
                 <span class="meta-label">Đơn hàng số:</span>
-                <span>${order.meta.donHangSo}</span>
+                <span style="font-size: 24pt; font-weight: bold;">${order.meta.donHangSo}</span>
             </div>
               <div class="meta-row">
                 <span class="meta-label">Phiếu xuất:</span>
@@ -161,11 +172,9 @@ const generateHandoverHTML = (order: LSXData, items: LSXItem[]): string => {
         <div class="footer">
             <div class="signature-block">
                 <div class="signature-title">Người giao</div>
-                <div>(Ký, ghi rõ họ tên)</div>
             </div>
             <div class="signature-block">
                 <div class="signature-title">Người nhận</div>
-                <div>(Ký, ghi rõ họ tên)</div>
             </div>
         </div>
     `;
