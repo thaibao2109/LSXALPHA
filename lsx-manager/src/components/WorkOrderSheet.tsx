@@ -297,7 +297,7 @@ export const printAllWorkOrders = (order: LSXData, items: LSXItem[], printConfig
                     left: 50%;
                     transform: translate(-50%, -50%);
                     width: 60%;
-                    opacity: 0.15;
+                    opacity: 0.03;
                     z-index: 0;
                     pointer-events: none;
                 }
