@@ -1,6 +1,6 @@
 import React from 'react';
 import type { LSXItem, LSXData } from '../types';
-import { CheckCircle2, Circle, Printer } from 'lucide-react';
+import { CheckCircle2, Circle, Printer, Trash2 } from 'lucide-react';
 import { printWorkOrder } from './WorkOrderSheet';
 import type { PrintConfig } from '../utils/printConfig';
 
@@ -9,12 +9,14 @@ interface LSXTableProps {
     onItemClick: (item: LSXItem) => void;
     order: LSXData;
     printConfig: PrintConfig;
+    onDeleteItem?: (item: LSXItem) => void;
+    canDelete?: boolean;
 }
 
 export const LSXTable: React.FC<LSXTableProps & {
     selectedItems?: Set<string>;
     onSelectionChange?: (selectedIds: Set<string>) => void;
-}> = ({ items, onItemClick, order, printConfig, selectedItems, onSelectionChange }) => {
+}> = ({ items, onItemClick, order, printConfig, selectedItems, onSelectionChange, onDeleteItem, canDelete }) => {
     const allSelected = items.length > 0 && selectedItems?.size === items.length;
     const someSelected = (selectedItems?.size || 0) > 0 && (selectedItems?.size || 0) < items.length;
 
@@ -146,16 +148,30 @@ export const LSXTable: React.FC<LSXTableProps & {
                                                 <span className="text-[10px] text-surface-400 italic">Chưa có tác vụ</span>
                                             )}
 
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    printWorkOrder(order, item, printConfig);
-                                                }}
-                                                className="p-2 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
-                                                title="In Lệnh Sản Xuất"
-                                            >
-                                                <Printer className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        printWorkOrder(order, item, printConfig);
+                                                    }}
+                                                    className="p-2 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                                                    title="In Lệnh Sản Xuất"
+                                                >
+                                                    <Printer className="w-4 h-4" />
+                                                </button>
+                                                {canDelete && onDeleteItem && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onDeleteItem(item);
+                                                        }}
+                                                        className="p-2 text-surface-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Xóa sản phẩm"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>

@@ -47,12 +47,13 @@ export interface ActivityLog {
     itemName?: string; // Tên hàng hóa
     taskId?: string;
     taskName?: string; // Tên công đoạn
-    action: 'task_status_change' | 'task_assigned' | 'task_time_set' | 'order_created' | 'order_deleted' | 'item_edited';
+    action: 'task_status_change' | 'task_assigned' | 'task_time_set' | 'order_created' | 'order_deleted' | 'item_edited' | 'item_deleted';
     details: {
         field?: string;
         oldValue?: any;
         newValue?: any;
         assignee?: string;
+        reason?: string;
     };
     performedBy?: string; // User Name
     role?: string;        // User Role

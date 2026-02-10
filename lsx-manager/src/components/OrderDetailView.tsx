@@ -208,6 +208,25 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         ? data.items.find(i => i.id === selectedItem.id) || selectedItem
         : null;
 
+    const handleDeleteProduct = (product: LSXItem) => {
+        if (!confirm(`Bạn có chắc muốn xóa sản phẩm "${product.tenHangHoa}" không?`)) return;
+
+        const updatedItems = data.items.filter(item => item.id !== product.id);
+
+        // Log activity
+        if (onLogActivity) {
+            onLogActivity('item_deleted', data.id || '', data.meta.phieuXuat, {
+                itemId: product.id,
+                itemName: product.tenHangHoa,
+                details: {
+                    reason: 'Admin deleted item'
+                }
+            });
+        }
+
+        onUpdate({ ...data, items: updatedItems });
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500 pb-12">
             <header className="flex flex-col gap-6">
@@ -533,6 +552,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                     printConfig={printConfig}
                     selectedItems={selectedItemIds}
                     onSelectionChange={handleSelectionChange}
+                    onDeleteItem={handleDeleteProduct}
+                    canDelete={currentUser?.role === 'admin'}
                 />
             </div>
 
