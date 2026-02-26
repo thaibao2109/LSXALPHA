@@ -12,6 +12,8 @@ import { formatDateWithRemaining } from '../utils/dateUtils';
 import type { LSXData, LSXItem, Task, ActivityLog, ProductType, User, Tool, OrderNote } from '../types';
 import type { PrintConfig } from '../utils/printConfig';
 import { AddProductModal } from './AddProductModal';
+import { HandoverModal } from './HandoverModal';
+import type { HandoverItemData } from './HandoverModal';
 
 interface OrderDetailViewProps {
     data: LSXData;
@@ -67,6 +69,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState(data.meta);
     const [isAddingProduct, setIsAddingProduct] = useState(false);
+    const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
 
     const handleStartEdit = () => {
         setEditForm(data.meta);
@@ -182,6 +185,47 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         onUpdate({ ...data, items: newItems });
     };
 
+    const handleConfirmHandover = (handoverItems: HandoverItemData[]) => {
+        let updatedCount = 0;
+        const newItems = data.items.map(item => {
+            const handoverData = handoverItems.find(h => h.item.id === item.id);
+            if (handoverData && handoverData.quantity > 0) {
+                updatedCount++;
+                const newSlDaGiao = (item.slDaGiao || 0) + handoverData.quantity;
+                const isFullyDelivered = newSlDaGiao >= item.slYeuCau;
+
+                if (onLogActivity) {
+                    onLogActivity('item_edited', data.id || '', data.meta.phieuXuat, {
+                        itemId: item.id,
+                        itemName: item.tenHangHoa,
+                        details: {
+                            field: 'slDaGiao',
+                            oldValue: item.slDaGiao || 0,
+                            newValue: newSlDaGiao,
+                            reason: `Bàn giao ${handoverData.quantity} ${item.donVi}`
+                        }
+                    });
+                }
+
+                return {
+                    ...item,
+                    slDaGiao: newSlDaGiao,
+                    delivered: isFullyDelivered ? true : item.delivered
+                };
+            }
+            return item;
+        });
+
+        if (updatedCount > 0) {
+            onUpdate({ ...data, items: newItems });
+            // In phiếu
+            printHandoverMinutes(data, handoverItems);
+        }
+
+        setIsHandoverModalOpen(false);
+        setSelectedItemIds(new Set()); // Reset selection sau khi giao
+    };
+
     // --- Notes Logic ---
     const handleAddNote = () => {
         if (!newNoteContent.trim()) return;
@@ -211,7 +255,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         : null;
 
     const handleDeleteProduct = (product: LSXItem) => {
-        if (!confirm(`Bạn có chắc muốn xóa sản phẩm "${product.tenHangHoa}" không?`)) return;
+        if (!confirm(`Bạn có chắc muốn xóa sản phẩm "${product.tenHangHoa}" không ? `)) return;
 
         const updatedItems = data.items.filter(item => item.id !== product.id);
 
@@ -351,7 +395,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                             className="font-medium text-brand-600 border-b border-brand-300 focus:border-brand-600 outline-none bg-transparent"
                                         />
                                     ) : (
-                                        <span className={`font-medium ${new Date(data.meta.ngayGiaoHang) < new Date() ? 'text-red-600' : 'text-brand-600'}`}>
+                                        <span className={`font- medium ${new Date(data.meta.ngayGiaoHang) < new Date() ? 'text-red-600' : 'text-brand-600'}`}>
                                             {formatDateWithRemaining(data.meta.ngayGiaoHang)}
                                         </span>
                                     )}
@@ -392,7 +436,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                                             if (tasks.length === 0) return acc;
                                                             const completed = tasks.filter(t => t.status === 'completed').length;
                                                             return acc + (completed / tasks.length) * 100;
-                                                        }, 0) / data.items.length) : 0}%`
+                                                        }, 0) / data.items.length) : 0
+                                                            } % `
                                                     }}
                                                     title="Hoàn thành"
                                                 />
@@ -404,7 +449,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                                                             if (tasks.length === 0) return acc;
                                                             const inProgress = tasks.filter(t => t.status === 'in_progress').length;
                                                             return acc + (inProgress / tasks.length) * 100;
-                                                        }, 0) / data.items.length) : 0}%`
+                                                        }, 0) / data.items.length) : 0
+                                                            } % `
                                                     }}
                                                     title="Đang thực hiện"
                                                 />
@@ -671,12 +717,9 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                             {/* Group 3: Print Handover */}
                             <div className="flex items-center gap-2 w-full md:w-auto border-l border-surface-700 pl-3 ml-3">
                                 <button
-                                    onClick={() => {
-                                        const selectedItemsList = data.items.filter(i => selectedItemIds.has(i.id));
-                                        printHandoverMinutes(data, selectedItemsList);
-                                    }}
+                                    onClick={() => setIsHandoverModalOpen(true)}
                                     className="px-3 py-2 bg-white text-surface-900 hover:bg-surface-100 active:bg-surface-200 rounded-lg font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
-                                    title="In biên bản bàn giao"
+                                    title="Kiểm tra & Bàn giao hàng hóa"
                                 >
                                     <Printer className="w-4 h-4" />
                                     <span className="hidden md:inline">Bàn giao</span>
@@ -726,6 +769,13 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 isOpen={isAddingProduct}
                 onClose={() => setIsAddingProduct(false)}
                 onAdd={handleAddProduct}
+            />
+
+            <HandoverModal
+                isOpen={isHandoverModalOpen}
+                onClose={() => setIsHandoverModalOpen(false)}
+                items={data.items.filter(i => selectedItemIds.has(i.id))}
+                onConfirm={handleConfirmHandover}
             />
         </div >
     );

@@ -1,13 +1,13 @@
 import type { LSXData, LSXItem } from '../types';
 
-export const printHandoverMinutes = (order: LSXData, items: LSXItem[]) => {
+export const printHandoverMinutes = (order: LSXData, handoverItems: { item: LSXItem, quantity: number }[]) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
         alert('Vui lòng cho phép popup để in phiếu');
         return;
     }
 
-    const contentHTML = generateHandoverHTML(order, items);
+    const contentHTML = generateHandoverHTML(order, handoverItems);
 
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -117,7 +117,7 @@ export const printHandoverMinutes = (order: LSXData, items: LSXItem[]) => {
     printWindow.document.close();
 };
 
-const generateHandoverHTML = (order: LSXData, items: LSXItem[]): string => {
+const generateHandoverHTML = (order: LSXData, handoverItems: { item: LSXItem, quantity: number }[]): string => {
     return `
         <img src="${window.location.origin}${import.meta.env.BASE_URL}logo-alpha.png" class="watermark" />
         <div class="header">
@@ -152,7 +152,7 @@ const generateHandoverHTML = (order: LSXData, items: LSXItem[]): string => {
                 </tr>
             </thead>
             <tbody>
-                ${items.map((item, index) => `
+                ${handoverItems.map(({item, quantity}, index) => `
                     <tr>
                         <td style="text-align: center;">${index + 1}</td>
                         <td>
@@ -160,7 +160,7 @@ const generateHandoverHTML = (order: LSXData, items: LSXItem[]): string => {
                         </td>
                         <td style="text-align: center;">${item.quyCach}</td>
                         <td style="text-align: center;">
-                            <strong>${item.slYeuCau}</strong> ${item.donVi}
+                            <strong>${quantity}</strong> ${item.donVi}
                         </td>
                         <td></td>
                         <td></td>

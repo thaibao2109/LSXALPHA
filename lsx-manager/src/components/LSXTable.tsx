@@ -125,7 +125,12 @@ export const LSXTable: React.FC<LSXTableProps & {
                                             {item.delivered ? (
                                                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-green-50 text-green-700 border-green-200 text-xs font-bold uppercase tracking-tight shadow-sm">
                                                     <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                                    <span>Đã giao kho</span>
+                                                    <span>Đã giao đủ</span>
+                                                </div>
+                                            ) : (item.slDaGiao && item.slDaGiao > 0) ? (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-blue-50 text-blue-700 border-blue-200 text-xs font-bold uppercase tracking-tight shadow-sm">
+                                                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                                                    <span>Đã giao: {item.slDaGiao} / {item.slYeuCau}</span>
                                                 </div>
                                             ) : tasks.length > 0 ? (
                                                 <div className="flex flex-wrap gap-2 items-center">
