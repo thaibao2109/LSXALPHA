@@ -100,7 +100,8 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                 vatLieu: '',
                 quyCachPhoi: '',
                 marking: '',
-                tasks: []
+                tasks: [],
+                delivered: false
             };
             return {
                 ...prev,

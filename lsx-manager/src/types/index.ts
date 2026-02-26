@@ -21,6 +21,7 @@ export interface LSXItem {
     // Custom fields for management
     id: string; // Unique ID generated from ODS data
     tasks?: Task[];
+    delivered?: boolean;
 }
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed';

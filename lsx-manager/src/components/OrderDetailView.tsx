@@ -11,6 +11,7 @@ import { uuid } from '../utils/uuid';
 import { formatDateWithRemaining } from '../utils/dateUtils';
 import type { LSXData, LSXItem, Task, ActivityLog, ProductType, User, Tool, OrderNote } from '../types';
 import type { PrintConfig } from '../utils/printConfig';
+import { AddProductModal } from './AddProductModal';
 
 interface OrderDetailViewProps {
     data: LSXData;
@@ -65,6 +66,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
     // Edit State
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState(data.meta);
+    const [isAddingProduct, setIsAddingProduct] = useState(false);
 
     const handleStartEdit = () => {
         setEditForm(data.meta);
@@ -225,6 +227,40 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         }
 
         onUpdate({ ...data, items: updatedItems });
+    };
+
+    const handleAddProduct = (newItem: LSXItem) => {
+        const updatedItems = [...data.items, newItem];
+        onUpdate({ ...data, items: updatedItems });
+        if (onLogActivity) {
+            onLogActivity('item_edited', data.id || '', data.meta.phieuXuat, {
+                itemId: newItem.id,
+                itemName: newItem.tenHangHoa,
+                details: {
+                    reason: 'Admin added new item during edit'
+                }
+            });
+        }
+    };
+
+    const handleToggleDelivered = (product: LSXItem) => {
+        const updatedItems = data.items.map(item =>
+            item.id === product.id ? { ...item, delivered: !item.delivered } : item
+        );
+        onUpdate({ ...data, items: updatedItems });
+
+        if (onLogActivity) {
+            onLogActivity('item_edited', data.id || '', data.meta.phieuXuat, {
+                itemId: product.id,
+                itemName: product.tenHangHoa,
+                details: {
+                    field: 'delivered',
+                    oldValue: product.delivered,
+                    newValue: !product.delivered,
+                    reason: !product.delivered ? 'Đánh dấu đã giao kho' : 'Bỏ đánh dấu giao kho'
+                }
+            });
+        }
     };
 
     return (
@@ -541,9 +577,19 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             </div>
 
             <div className="space-y-6">
-                <div className="flex items-center gap-2 px-1">
-                    <h3 className="text-xl font-bold text-surface-900">Danh mục hàng hóa</h3>
-                    <span className="bg-brand-50 text-brand-600 px-2 py-0.5 rounded-lg text-xs font-bold">{data.items.length} mặt hàng</span>
+                <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-surface-900">Danh mục hàng hóa</h3>
+                        <span className="bg-brand-50 text-brand-600 px-2 py-0.5 rounded-lg text-xs font-bold">{data.items.length} mặt hàng</span>
+                    </div>
+                    {isEditing && (
+                        <button
+                            onClick={() => setIsAddingProduct(true)}
+                            className="px-3 py-1.5 bg-brand-50 text-brand-600 rounded-lg text-sm font-bold hover:bg-brand-100 transition-colors flex items-center gap-2"
+                        >
+                            + Thêm sản phẩm
+                        </button>
+                    )}
                 </div>
                 <LSXTable
                     items={data.items}
@@ -553,6 +599,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                     selectedItems={selectedItemIds}
                     onSelectionChange={handleSelectionChange}
                     onDeleteItem={handleDeleteProduct}
+                    onToggleDelivered={handleToggleDelivered}
                     canDelete={currentUser?.role === 'admin'}
                 />
             </div>
@@ -673,6 +720,12 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 onUpdateProductTypes={onUpdateProductTypes}
                 tools={tools}
                 onUpdateTools={onUpdateTools}
+            />
+
+            <AddProductModal
+                isOpen={isAddingProduct}
+                onClose={() => setIsAddingProduct(false)}
+                onAdd={handleAddProduct}
             />
         </div >
     );

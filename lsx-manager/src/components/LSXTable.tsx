@@ -10,13 +10,14 @@ interface LSXTableProps {
     order: LSXData;
     printConfig: PrintConfig;
     onDeleteItem?: (item: LSXItem) => void;
+    onToggleDelivered?: (item: LSXItem) => void;
     canDelete?: boolean;
 }
 
 export const LSXTable: React.FC<LSXTableProps & {
     selectedItems?: Set<string>;
     onSelectionChange?: (selectedIds: Set<string>) => void;
-}> = ({ items, onItemClick, order, printConfig, selectedItems, onSelectionChange, onDeleteItem, canDelete }) => {
+}> = ({ items, onItemClick, order, printConfig, selectedItems, onSelectionChange, onDeleteItem, onToggleDelivered, canDelete }) => {
     const allSelected = items.length > 0 && selectedItems?.size === items.length;
     const someSelected = (selectedItems?.size || 0) > 0 && (selectedItems?.size || 0) < items.length;
 
@@ -121,7 +122,12 @@ export const LSXTable: React.FC<LSXTableProps & {
                                     </td>
                                     <td className="px-6 py-5">
                                         <div className="flex items-center justify-between gap-4">
-                                            {tasks.length > 0 ? (
+                                            {item.delivered ? (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-green-50 text-green-700 border-green-200 text-xs font-bold uppercase tracking-tight shadow-sm">
+                                                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                                    <span>Đã giao kho</span>
+                                                </div>
+                                            ) : tasks.length > 0 ? (
                                                 <div className="flex flex-wrap gap-2 items-center">
                                                     {tasks.map((task) => (
                                                         <div
@@ -159,6 +165,21 @@ export const LSXTable: React.FC<LSXTableProps & {
                                                 >
                                                     <Printer className="w-4 h-4" />
                                                 </button>
+                                                {onToggleDelivered && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onToggleDelivered(item);
+                                                        }}
+                                                        className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${item.delivered
+                                                            ? 'text-green-600 bg-green-50 hover:bg-green-100'
+                                                            : 'text-surface-400 hover:text-blue-600 hover:bg-blue-50'
+                                                            }`}
+                                                        title={item.delivered ? "Đã giao kho" : "Đánh dấu giao kho"}
+                                                    >
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 {canDelete && onDeleteItem && (
                                                     <button
                                                         onClick={(e) => {

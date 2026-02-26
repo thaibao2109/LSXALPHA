@@ -8,7 +8,7 @@ const normalizeHeader = (header: any): string => {
 };
 
 // Map of Property Key -> Possible Header Names (lowercased)
-const COLUMN_MAPPING: Record<keyof Omit<LSXItem, 'id' | 'tasks'>, string[]> = {
+const COLUMN_MAPPING: Record<keyof Omit<LSXItem, 'id' | 'tasks' | 'delivered'>, string[]> = {
     stt: ['stt', 'no.'],
     tenHangHoa: ['tên hàng hóa', 'tên hàng', 'tên sản phẩm'],
     beMat: ['bề mặt', 'xử lý bề mặt'],
