@@ -11,11 +11,12 @@ interface HandoverModalProps {
     isOpen: boolean;
     onClose: () => void;
     items: LSXItem[];
-    onConfirm: (data: HandoverItemData[]) => void;
+    onConfirm: (data: HandoverItemData[], isReprint: boolean) => void;
 }
 
 export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, items, onConfirm }) => {
     const [handoverData, setHandoverData] = useState<HandoverItemData[]>([]);
+    const [isReprint, setIsReprint] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -29,24 +30,39 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                 };
             });
             setHandoverData(initialData);
+            setIsReprint(false); // Reset chế độ in lại mỗi khi mở modal
         }
     }, [isOpen, items]);
 
     if (!isOpen) return null;
 
-    const handleQuantityChange = (itemId: string, newQuantityStr: string) => {
-        const newQuantity = parseInt(newQuantityStr, 10) || 0;
-        setHandoverData(prev => prev.map(data =>
-            data.item.id === itemId
-                ? { ...data, quantity: Math.max(0, newQuantity) }
-                : data
-        ));
+    const handleToggleReprint = () => {
+        const newIsReprint = !isReprint;
+        setIsReprint(newIsReprint);
+
+        // Cập nhật lại số lượng mặc định khi chuyển đổi chế độ
+        setHandoverData(prev => prev.map(d => ({
+            ...d,
+            quantity: newIsReprint
+                ? (d.item.slDaGiao || 0) // Ở chế độ in lại, mặc định là số đã giao
+                : Math.max(0, d.item.slYeuCau - (d.item.slDaGiao || 0)) // Chế độ thường, là số còn lại
+        })));
     };
 
-    const hasInvalidQuantity = handoverData.some(d => d.quantity < 0 || d.quantity > (d.item.slYeuCau - (d.item.slDaGiao || 0)));
+    const hasInvalidQuantity = handoverData.some(d => {
+        const slDaGiao = d.item.slDaGiao || 0;
+        const remaining = d.item.slYeuCau - slDaGiao;
+        if (isReprint) {
+            // Chế độ in lại: cho phép nhập tối đa số lượng yêu cầu
+            return d.quantity < 0 || d.quantity > d.item.slYeuCau;
+        }
+        // Chế độ thường: không vượt quá số còn lại
+        return d.quantity < 0 || d.quantity > remaining;
+    });
+
     const handleConfirm = () => {
         if (hasInvalidQuantity) return;
-        onConfirm(handoverData);
+        onConfirm(handoverData, isReprint);
     };
 
     return (
@@ -55,7 +71,25 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                 <div className="flex items-center justify-between p-6 border-b border-surface-100">
                     <div>
                         <h2 className="text-xl font-bold text-surface-900">Bàn giao hàng hóa</h2>
-                        <p className="text-sm text-surface-500 mt-1">Nhập số lượng thực tế cần bàn giao đợt này</p>
+                        <div className="flex items-center gap-4 mt-1">
+                            <p className="text-sm text-surface-500">Nhập số lượng thực tế cần bàn giao đợt này</p>
+                            <div className="h-4 w-px bg-surface-200" />
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <div className="relative flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={isReprint}
+                                        onChange={handleToggleReprint}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-8 h-4 bg-surface-200 rounded-full peer peer-checked:bg-purple-500 transition-colors" />
+                                    <div className="absolute left-0.5 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                                </div>
+                                <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${isReprint ? "text-purple-600" : "text-surface-400 group-hover:text-surface-600"}`}>
+                                    Chế độ in lại
+                                </span>
+                            </label>
+                        </div>
                     </div>
                     <button
                         onClick={onClose}
@@ -81,7 +115,8 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                             {handoverData.map((data, index) => {
                                 const slDaGiao = data.item.slDaGiao || 0;
                                 const remaining = data.item.slYeuCau - slDaGiao;
-                                const isExceeding = data.quantity > remaining;
+                                const maxAllowed = isReprint ? data.item.slYeuCau : remaining;
+                                const isExceeding = data.quantity > maxAllowed;
 
                                 return (
                                     <tr key={data.item.id} className="hover:bg-surface-50">
@@ -102,11 +137,16 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                                             <input
                                                 type="number"
                                                 min="0"
-                                                max={remaining > 0 ? remaining : 0}
+                                                max={maxAllowed}
                                                 value={data.quantity === 0 ? '' : data.quantity}
-                                                onChange={(e) => handleQuantityChange(data.item.id, e.target.value)}
-                                                className={`w-full px-3 py-1.5 border rounded-lg text-center font-semibold focus:outline-none focus:ring-2 transition-all ${isExceeding ? "border-red-300 focus:ring-red-500 bg-red-50 text-red-600" : "border-surface-200 focus:ring-brand-500"}`}
-                                            placeholder="0"
+                                                onChange={(e) => {
+                                                    const newQty = parseInt(e.target.value, 10) || 0;
+                                                    setHandoverData(prev => prev.map(d =>
+                                                        d.item.id === data.item.id ? { ...d, quantity: Math.max(0, newQty) } : d
+                                                    ));
+                                                }}
+                                                className={`w-full px-3 py-1.5 border rounded-lg text-center font-semibold focus:outline-none focus:ring-2 transition-all ${isExceeding ? "border-red-300 focus:ring-red-500 bg-red-50 text-red-600" : (isReprint ? "border-purple-200 focus:ring-purple-500" : "border-surface-200 focus:ring-brand-500")}`}
+                                                placeholder="0"
                                             />
                                         </td>
                                     </tr>
@@ -132,11 +172,11 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                     </button>
                     <button
                         onClick={handleConfirm}
-                        disabled={hasInvalidQuantity || handoverData.every(d => d.quantity === 0)}
-                        className="px-6 py-2 bg-brand-600 text-white text-sm font-bold rounded-xl hover:bg-brand-700 hover:shadow-lg hover:shadow-brand-200 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                        disabled={hasInvalidQuantity || (handoverData.every(d => d.quantity === 0) && !isReprint)}
+                        className={`px-6 py-2 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${isReprint ? "bg-purple-600 hover:bg-purple-700 shadow-purple-200" : "bg-brand-600 hover:bg-brand-700 shadow-brand-200"}`}
                     >
                         <Save className="w-4 h-4" />
-                        Xác nhận & In phiếu
+                        {isReprint ? "Xác nhận & In lại" : "Xác nhận & In phiếu"}
                     </button>
                 </div>
             </div>

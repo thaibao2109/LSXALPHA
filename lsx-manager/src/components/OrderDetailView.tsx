@@ -185,7 +185,15 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         onUpdate({ ...data, items: newItems });
     };
 
-    const handleConfirmHandover = (handoverItems: HandoverItemData[]) => {
+    const handleConfirmHandover = (handoverItems: HandoverItemData[], isReprint: boolean) => {
+        if (isReprint) {
+            // Chế độ in lại: chỉ in, không cập nhật DB
+            printHandoverMinutes(data, handoverItems);
+            setIsHandoverModalOpen(false);
+            setSelectedItemIds(new Set());
+            return;
+        }
+
         let updatedCount = 0;
         const newItems = data.items.map(item => {
             const handoverData = handoverItems.find(h => h.item.id === item.id);
