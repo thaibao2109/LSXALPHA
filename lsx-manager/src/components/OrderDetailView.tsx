@@ -197,7 +197,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         let updatedCount = 0;
         const newItems = data.items.map(item => {
             const handoverData = handoverItems.find(h => h.item.id === item.id);
-            if (handoverData && handoverData.quantity > 0) {
+            if (handoverData && typeof handoverData.quantity === 'number' && handoverData.quantity > 0) {
                 updatedCount++;
                 const newSlDaGiao = (item.slDaGiao || 0) + handoverData.quantity;
                 const isFullyDelivered = newSlDaGiao >= item.slYeuCau;
@@ -296,9 +296,20 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
     };
 
     const handleToggleDelivered = (product: LSXItem) => {
-        const updatedItems = data.items.map(item =>
-            item.id === product.id ? { ...item, delivered: !item.delivered } : item
-        );
+        const updatedItems = data.items.map(item => {
+            if (item.id === product.id) {
+                const newDelivered = !item.delivered;
+                let newTasks = item.tasks;
+                if (newDelivered && newTasks) {
+                    newTasks = newTasks.map(task => ({
+                        ...task,
+                        status: 'completed'
+                    }));
+                }
+                return { ...item, delivered: newDelivered, tasks: newTasks };
+            }
+            return item;
+        });
         onUpdate({ ...data, items: updatedItems });
 
         if (onLogActivity) {
@@ -309,7 +320,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                     field: 'delivered',
                     oldValue: product.delivered,
                     newValue: !product.delivered,
-                    reason: !product.delivered ? 'Đánh dấu đã giao kho' : 'Bỏ đánh dấu giao kho'
+                    reason: !product.delivered ? 'Đánh dấu đã giao kho và hoàn thành tác vụ' : 'Bỏ đánh dấu giao kho'
                 }
             });
         }

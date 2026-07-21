@@ -212,7 +212,7 @@ export const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({ data, is
                                     <tr>
                                         <th className="px-3 py-2 text-left font-semibold text-gray-700 w-12 sticky left-0 bg-gray-100 z-20">STT</th>
                                         <th className="px-3 py-2 text-left font-semibold text-gray-700 w-48 sticky left-12 bg-gray-100 z-20 shadow-r">Tên hàng hóa</th>
-                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">Bề mặt</th>
+                                        <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">Bề mặt / Lớp mạ</th>
                                         <th className="px-3 py-2 text-left font-semibold text-gray-700 w-20">Đơn vị</th>
                                         <th className="px-3 py-2 text-left font-semibold text-gray-700 w-32">Quy cách</th>
                                         <th className="px-3 py-2 text-left font-semibold text-gray-700 w-24">SL yêu cầu</th>

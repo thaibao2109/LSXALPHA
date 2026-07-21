@@ -18,7 +18,7 @@ export const AVAILABLE_SPECS: Record<string, string> = {
     'duongKinhDinhRen': 'Đường kính đỉnh ren',
     'buocRen': 'Bước ren',
     'chieuDaiRen': 'Chiều dài ren',
-    'beMat': 'Xử lý bề mặt',
+    'beMat': 'Bề mặt / Lớp mạ',
     'slYeuCau': 'Số lượng yêu cầu',
     'slDuPhong': 'Số lượng dự phòng',
     'marking': 'Marking / Ký hiệu'

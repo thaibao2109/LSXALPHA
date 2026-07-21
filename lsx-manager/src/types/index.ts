@@ -23,9 +23,19 @@ export interface LSXItem {
     tasks?: Task[];
     slDaGiao?: number; // Added for partial handover tracking
     delivered?: boolean;
+    prepMaterial?: 'đã có' | 'đang làm' | 'chưa có';
+    prepTool?: 'đã có' | 'đang làm' | 'chưa có';
 }
 
-export type TaskStatus = 'pending' | 'in_progress' | 'completed';
+export interface StatusDefinition {
+    id: string;
+    label: string;
+    color: string; // hex color
+    isDone: boolean;
+    order: number;
+}
+
+export type TaskStatus = string; // Now dynamic
 
 export interface Task {
     id: string;

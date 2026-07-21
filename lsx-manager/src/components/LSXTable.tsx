@@ -67,6 +67,7 @@ export const LSXTable: React.FC<LSXTableProps & {
                             <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest sticky left-[100px] bg-surface-50/50 z-20 min-w-[240px]">Tên hàng hóa</th>
                             <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest min-w-[150px]">QC / Kích thước</th>
                             <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest">Vật liệu</th>
+                            <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest">Lớp mạ</th>
                             <th scope="col" className="px-6 py-4 text-center text-[10px] font-bold text-surface-400 uppercase tracking-widest">Sản lượng</th>
                             <th scope="col" className="px-6 py-4 text-center text-[10px] font-bold text-surface-400 uppercase tracking-widest">Đơn vị</th>
                             <th scope="col" className="px-6 py-4 text-left text-[10px] font-bold text-surface-400 uppercase tracking-widest">Thông số</th>
@@ -110,6 +111,7 @@ export const LSXTable: React.FC<LSXTableProps & {
                                         </div>
                                     </td>
                                     <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-surface-600">{item.vatLieu}</td>
+                                    <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-surface-600">{item.beMat || ''}</td>
                                     <td className="px-6 py-5 whitespace-nowrap text-brand-600 font-extrabold text-center">{item.slYeuCau.toLocaleString()}</td>
                                     <td className="px-6 py-5 whitespace-nowrap text-xs font-bold text-surface-500 text-center">
                                         <span className="px-2 py-1 bg-surface-100 rounded-md uppercase tracking-tighter">{item.donVi}</span>

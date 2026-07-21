@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Trash2, Printer, ListChecks, CheckSquare, Tags, ArrowUp, ArrowDown, Copy, Pencil, Check, Settings } from 'lucide-react';
 import { uuid } from '../utils/uuid';
 import { AVAILABLE_SPECS, type PrintConfig } from '../utils/printConfig';
-import type { ProductType } from '../types';
+import type { ProductType, StatusDefinition } from '../types';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { clsx } from 'clsx';
 
@@ -18,6 +18,8 @@ interface ConfigModalProps {
     onUpdateProductTypes?: (newTypes: ProductType[]) => void;
     tools?: any[]; // Using any[] temporarily or importing Tool if possible, but to be safe and quick
     onUpdateTools?: (newTools: any[]) => void;
+    taskStatuses?: StatusDefinition[];
+    onUpdateStatuses?: (newStatuses: StatusDefinition[]) => void;
 }
 
 export const ConfigModal: React.FC<ConfigModalProps> = ({
@@ -29,9 +31,11 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
     printConfig,
     onUpdatePrintConfig,
     productTypes = [],
-    onUpdateProductTypes
+    onUpdateProductTypes,
+    taskStatuses = [],
+    onUpdateStatuses
 }) => {
-    const [activeTab, setActiveTab] = useState<'tasks' | 'print' | 'product-types'>('product-types');
+    const [activeTab, setActiveTab] = useState<'tasks' | 'print' | 'product-types' | 'statuses'>('product-types');
     const [newTemplate, setNewTemplate] = useState('');
     const [selectedPrintTask, setSelectedPrintTask] = useState<string | null>(null);
 
@@ -59,6 +63,12 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
         onConfirm: () => { },
         isDelete: true,
     });
+    
+    // Status Management State
+    const [newStatusLabel, setNewStatusLabel] = useState('');
+    const [newStatusColor, setNewStatusColor] = useState('#64748b');
+    const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
+    const [editStatusValue, setEditStatusValue] = useState<{ label: string; color: string }>({ label: '', color: '#64748b' });
 
     // Initial check for selected print task
     React.useEffect(() => {
@@ -304,6 +314,61 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
         updateProductTypeTasks(newTasks);
     };
 
+    // --- Status Management Logic ---
+
+    const handleAddStatus = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newStatusLabel.trim() || !onUpdateStatuses) return;
+
+        const newStatus: StatusDefinition = {
+            id: uuid(),
+            label: newStatusLabel.trim(),
+            color: newStatusColor,
+            isDone: false,
+            order: taskStatuses.length
+        };
+
+        onUpdateStatuses([...taskStatuses, newStatus]);
+        setNewStatusLabel('');
+    };
+
+    const handleDeleteStatus = (id: string) => {
+        if (!onUpdateStatuses) return;
+        if (taskStatuses.length <= 1) {
+            alert('Phải có ít nhất một trạng thái!');
+            return;
+        }
+
+        setConfirmation({
+            isOpen: true,
+            title: 'Xóa trạng thái',
+            message: 'Bạn có chắc muốn xóa trạng thái này? Các tác vụ đang mang trạng thái này có thể bị ảnh hưởng.',
+            isDelete: true,
+            onConfirm: () => {
+                onUpdateStatuses(taskStatuses.filter(s => s.id !== id));
+            }
+        });
+    };
+
+    const handleUpdateStatus = (id: string, updates: Partial<StatusDefinition>) => {
+        if (!onUpdateStatuses) return;
+        onUpdateStatuses(taskStatuses.map(s => s.id === id ? { ...s, ...updates } : s));
+    };
+
+    const moveStatus = (index: number, direction: 'up' | 'down') => {
+        if (!onUpdateStatuses) return;
+        const newList = [...taskStatuses];
+        if (direction === 'up') {
+            if (index === 0) return;
+            [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
+        } else {
+            if (index === newList.length - 1) return;
+            [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
+        }
+        // Update order field based on new index
+        onUpdateStatuses(newList.map((s, i) => ({ ...s, order: i })));
+    };
+
 
 
     return (
@@ -347,6 +412,18 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                     >
                         <ListChecks className="w-4 h-4" />
                         Quản lý Công đoạn
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('statuses')}
+                        className={clsx(
+                            "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                            activeTab === 'statuses'
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        <CheckSquare className="w-4 h-4" />
+                        Quản lý Trạng thái
                     </button>
 
                     {printConfig && (
@@ -702,6 +779,123 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                                         Vui lòng chọn một công đoạn để cấu hình.
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'statuses' && (
+                        <div className="space-y-6">
+                            <form onSubmit={handleAddStatus} className="flex gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                <div className="flex-1">
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tên trạng thái mới</label>
+                                    <input
+                                        type="text"
+                                        value={newStatusLabel}
+                                        onChange={(e) => setNewStatusLabel(e.target.value)}
+                                        placeholder="Ví dụ: Đang chờ, Đang làm..."
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Màu sắc</label>
+                                    <input
+                                        type="color"
+                                        value={newStatusColor}
+                                        onChange={(e) => setNewStatusColor(e.target.value)}
+                                        className="w-12 h-10 p-0 border border-gray-300 rounded-lg cursor-pointer overflow-hidden"
+                                    />
+                                </div>
+                                <div className="flex items-end">
+                                    <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold flex items-center gap-2">
+                                        <Plus className="w-5 h-5" />
+                                        Thêm
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div className="space-y-3">
+                                {taskStatuses.map((status, idx) => (
+                                    <div key={status.id} className="flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-xl shadow-sm group">
+                                        <div className="flex flex-col gap-1">
+                                            <button onClick={() => moveStatus(idx, 'up')} disabled={idx === 0} className="p-0.5 text-gray-400 hover:text-blue-600 disabled:opacity-20">
+                                                <ArrowUp className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => moveStatus(idx, 'down')} disabled={idx === taskStatuses.length - 1} className="p-0.5 text-gray-400 hover:text-blue-600 disabled:opacity-20">
+                                                <ArrowDown className="w-4 h-4" />
+                                            </button>
+                                        </div>
+
+                                        <div className="w-6 h-6 rounded-full shadow-inner" style={{ backgroundColor: status.color }} />
+
+                                        <div className="flex-1">
+                                            {editingStatusId === status.id ? (
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={editStatusValue.label || ''}
+                                                        onChange={(e) => setEditStatusValue({ ...editStatusValue, label: e.target.value })}
+                                                        className="flex-1 px-2 py-1 border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 outline-none text-sm"
+                                                        autoFocus
+                                                    />
+                                                    <input
+                                                        type="color"
+                                                        value={editStatusValue.color || '#64748b'}
+                                                        onChange={(e) => setEditStatusValue({ ...editStatusValue, color: e.target.value })}
+                                                        className="w-8 h-8 p-0 border-none cursor-pointer"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <span className="font-bold text-gray-900">{status.label}</span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-6">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={status.isDone}
+                                                    onChange={(e) => handleUpdateStatus(status.id, { isDone: e.target.checked })}
+                                                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300"
+                                                />
+                                                <span className="text-xs font-medium text-gray-500">Tính là hoàn thành</span>
+                                            </label>
+
+                                            <div className="flex items-center gap-1">
+                                                {editingStatusId === status.id ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                handleUpdateStatus(status.id, editStatusValue);
+                                                                setEditingStatusId(null);
+                                                            }}
+                                                            className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                                                        >
+                                                            <Check className="w-4 h-4" />
+                                                        </button>
+                                                        <button onClick={() => setEditingStatusId(null)} className="p-1.5 text-red-500 hover:bg-red-50 rounded">
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingStatusId(status.id);
+                                                                setEditStatusValue({ label: status.label, color: status.color });
+                                                            }}
+                                                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteStatus(status.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}

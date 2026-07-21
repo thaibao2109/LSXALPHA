@@ -1,6 +1,6 @@
 import type { LSXData, LSXItem } from '../types';
 
-export const printHandoverMinutes = (order: LSXData, handoverItems: { item: LSXItem, quantity: number }[]) => {
+export const printHandoverMinutes = (order: LSXData, handoverItems: { item: LSXItem, quantity: number | '' }[]) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
         alert('Vui lòng cho phép popup để in phiếu');
@@ -117,7 +117,7 @@ export const printHandoverMinutes = (order: LSXData, handoverItems: { item: LSXI
     printWindow.document.close();
 };
 
-const generateHandoverHTML = (order: LSXData, handoverItems: { item: LSXItem, quantity: number }[]): string => {
+const generateHandoverHTML = (order: LSXData, handoverItems: { item: LSXItem, quantity: number | '' }[]): string => {
     return `
         <img src="${window.location.origin}${import.meta.env.BASE_URL}logo-alpha.png" class="watermark" />
         <div class="header">
@@ -143,12 +143,16 @@ const generateHandoverHTML = (order: LSXData, handoverItems: { item: LSXItem, qu
         <table>
             <thead>
                 <tr>
-                    <th style="width: 50px;">STT</th>
-                    <th>Tên sản phẩm</th>
-                    <th style="width: 150px;">Kích thước / Quy cách</th>
-                    <th style="width: 80px;">Số lượng</th>
-                    <th style="width: 100px;">QC Kiểm tra</th>
-                    <th>Ghi chú</th>
+                    <th rowspan="2" style="width: 50px;">STT</th>
+                    <th rowspan="2">Tên sản phẩm</th>
+                    <th rowspan="2" style="width: 150px;">Kích thước / Quy cách</th>
+                    <th rowspan="2" style="width: 100px;">Lớp mạ/Bề mặt</th>
+                    <th colspan="2" style="width: 160px;">Số lượng</th>
+                    <th rowspan="2" style="width: 100px;">QC Kiểm tra</th>
+                </tr>
+                <tr>
+                    <th style="width: 80px;">Đơn hàng</th>
+                    <th style="width: 80px;">Thực tế</th>
                 </tr>
             </thead>
             <tbody>
@@ -159,10 +163,13 @@ const generateHandoverHTML = (order: LSXData, handoverItems: { item: LSXItem, qu
                             <strong>${item.tenHangHoa}</strong>
                         </td>
                         <td style="text-align: center;">${item.quyCach}</td>
+                        <td style="text-align: center;">${item.beMat || ''}</td>
                         <td style="text-align: center;">
-                            <strong>${quantity}</strong> ${item.donVi}
+                            <strong>${item.slYeuCau}</strong> ${item.donVi}
                         </td>
-                        <td></td>
+                        <td style="text-align: center;">
+                            <strong>${quantity === '' ? '' : quantity}</strong> ${quantity === '' ? '' : item.donVi}
+                        </td>
                         <td></td>
                     </tr>
                 `).join('')}

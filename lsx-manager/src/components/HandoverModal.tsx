@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 import type { LSXItem } from '../types';
 
 export interface HandoverItemData {
     item: LSXItem;
-    quantity: number;
+    quantity: number | '';
 }
 
 interface HandoverModalProps {
@@ -17,20 +17,22 @@ interface HandoverModalProps {
 export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, items, onConfirm }) => {
     const [handoverData, setHandoverData] = useState<HandoverItemData[]>([]);
     const [isReprint, setIsReprint] = useState(false);
+    const [isBlank, setIsBlank] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             // Khởi tạo data ban đầu: số lượng cần giao = (yêu cầu) - (đã giao)
-            const initialData = items.map(item => {
+            const initialData: HandoverItemData[] = items.map(item => {
                 const slDaGiao = item.slDaGiao || 0;
                 const remaining = Math.max(0, item.slYeuCau - slDaGiao);
                 return {
                     item: item,
-                    quantity: remaining > 0 ? remaining : 0 // Mặc định gợi ý số còn lại
+                    quantity: remaining > 0 ? remaining : ('' as const)
                 };
             });
             setHandoverData(initialData);
             setIsReprint(false); // Reset chế độ in lại mỗi khi mở modal
+            setIsBlank(false);
         }
     }, [isOpen, items]);
 
@@ -39,6 +41,7 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
     const handleToggleReprint = () => {
         const newIsReprint = !isReprint;
         setIsReprint(newIsReprint);
+        if (newIsReprint) setIsBlank(false); // Tắt phiếu ghi tay nếu bật in in lại
 
         // Cập nhật lại số lượng mặc định khi chuyển đổi chế độ
         setHandoverData(prev => prev.map(d => ({
@@ -49,20 +52,23 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
         })));
     };
 
+    const handleToggleBlank = () => {
+        const newIsBlank = !isBlank;
+        setIsBlank(newIsBlank);
+        if (newIsBlank) setIsReprint(false); // Tắt in lại nếu bật phiếu ghi tay
+    };
+
     const hasInvalidQuantity = handoverData.some(d => {
-        const slDaGiao = d.item.slDaGiao || 0;
-        const remaining = d.item.slYeuCau - slDaGiao;
-        if (isReprint) {
-            // Chế độ in lại: cho phép nhập tối đa số lượng yêu cầu
-            return d.quantity < 0 || d.quantity > d.item.slYeuCau;
-        }
-        // Chế độ thường: không vượt quá số còn lại
-        return d.quantity < 0 || d.quantity > remaining;
+        return typeof d.quantity === 'number' && d.quantity < 0;
     });
 
     const handleConfirm = () => {
-        if (hasInvalidQuantity) return;
-        onConfirm(handoverData, isReprint);
+        if (hasInvalidQuantity && !isBlank) return;
+        const dataToSubmit = isBlank 
+            ? handoverData.map(d => ({ ...d, quantity: '' as const }))
+            : handoverData;
+            
+        onConfirm(dataToSubmit, isReprint || isBlank);
     };
 
     return (
@@ -87,6 +93,24 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                                 </div>
                                 <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${isReprint ? "text-purple-600" : "text-surface-400 group-hover:text-surface-600"}`}>
                                     Chế độ in lại
+                                </span>
+                            </label>
+
+                            <div className="h-4 w-px bg-surface-200" />
+                            
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <div className="relative flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={isBlank}
+                                        onChange={handleToggleBlank}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-8 h-4 bg-surface-200 rounded-full peer peer-checked:bg-blue-500 transition-colors" />
+                                    <div className="absolute left-0.5 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4 shadow-sm" />
+                                </div>
+                                <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${isBlank ? "text-blue-600" : "text-surface-400 group-hover:text-surface-600"}`}>
+                                    Phiếu ghi tay
                                 </span>
                             </label>
                         </div>
@@ -115,8 +139,6 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                             {handoverData.map((data, index) => {
                                 const slDaGiao = data.item.slDaGiao || 0;
                                 const remaining = data.item.slYeuCau - slDaGiao;
-                                const maxAllowed = isReprint ? data.item.slYeuCau : remaining;
-                                const isExceeding = data.quantity > maxAllowed;
 
                                 return (
                                     <tr key={data.item.id} className="hover:bg-surface-50">
@@ -137,16 +159,17 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                                             <input
                                                 type="number"
                                                 min="0"
-                                                max={maxAllowed}
-                                                value={data.quantity === 0 ? '' : data.quantity}
+                                                disabled={isBlank}
+                                                value={isBlank ? '' : (data.quantity === 0 ? '' : data.quantity)}
                                                 onChange={(e) => {
-                                                    const newQty = parseInt(e.target.value, 10) || 0;
+                                                    const val = e.target.value;
+                                                    const newQty = val === '' ? '' : Math.max(0, parseInt(val, 10));
                                                     setHandoverData(prev => prev.map(d =>
-                                                        d.item.id === data.item.id ? { ...d, quantity: Math.max(0, newQty) } : d
+                                                        d.item.id === data.item.id ? { ...d, quantity: Number.isNaN(newQty) ? '' : newQty } : d
                                                     ));
                                                 }}
-                                                className={`w-full px-3 py-1.5 border rounded-lg text-center font-semibold focus:outline-none focus:ring-2 transition-all ${isExceeding ? "border-red-300 focus:ring-red-500 bg-red-50 text-red-600" : (isReprint ? "border-purple-200 focus:ring-purple-500" : "border-surface-200 focus:ring-brand-500")}`}
-                                                placeholder="0"
+                                                className={`w-full px-3 py-1.5 border rounded-lg text-center font-semibold focus:outline-none focus:ring-2 transition-all ${isBlank ? "bg-surface-100 border-surface-200 text-surface-400 cursor-not-allowed" : (isReprint ? "border-purple-200 focus:ring-purple-500" : "border-surface-200 focus:ring-brand-500")}`}
+                                                placeholder={isBlank ? "" : "0"}
                                             />
                                         </td>
                                     </tr>
@@ -155,12 +178,7 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                         </tbody>
                     </table>
 
-                    {hasInvalidQuantity && (
-                        <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm flex items-start gap-2">
-                            <AlertCircle className="w-5 h-5 shrink-0" />
-                            <span>Số lượng giao đợt này không được vượt quá số lượng tồn đọng! Vui lòng kiểm tra lại các ô màu đỏ.</span>
-                        </div>
-                    )}
+                    {/* Validation removed to allow excess quantities */}
                 </div>
 
                 <div className="p-6 border-t border-surface-100 flex items-center justify-end gap-3 bg-surface-50/50">
@@ -172,11 +190,11 @@ export const HandoverModal: React.FC<HandoverModalProps> = ({ isOpen, onClose, i
                     </button>
                     <button
                         onClick={handleConfirm}
-                        disabled={hasInvalidQuantity || (handoverData.every(d => d.quantity === 0) && !isReprint)}
-                        className={`px-6 py-2 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${isReprint ? "bg-purple-600 hover:bg-purple-700 shadow-purple-200" : "bg-brand-600 hover:bg-brand-700 shadow-brand-200"}`}
+                        disabled={(hasInvalidQuantity && !isBlank) || (!isBlank && handoverData.every(d => d.quantity === '') && !isReprint)}
+                        className={`px-6 py-2 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${isBlank ? "bg-blue-600 hover:bg-blue-700 shadow-blue-200" : (isReprint ? "bg-purple-600 hover:bg-purple-700 shadow-purple-200" : "bg-brand-600 hover:bg-brand-700 shadow-brand-200")}`}
                     >
                         <Save className="w-4 h-4" />
-                        {isReprint ? "Xác nhận & In lại" : "Xác nhận & In phiếu"}
+                        {isBlank ? "In phiếu trắng" : (isReprint ? "Xác nhận & In lại" : "Xác nhận & In phiếu")}
                     </button>
                 </div>
             </div>

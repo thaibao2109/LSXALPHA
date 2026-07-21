@@ -46,10 +46,10 @@ export const exportOrderDetail = (order: LSXData) => {
         'STT': item.stt,
         'Tên hàng hóa': item.tenHangHoa,
         'Quy cách': item.quyCach,
-        'SL yêu cầu': item.slYeuCau,
+        'Số lượng': item.slYeuCau,
         'SL dự phòng': item.slDuPhong,
         'Đơn vị': item.donVi,
-        'Bề mặt': item.beMat,
+        'Bề mặt / Lớp mạ': item.beMat,
         'Vật liệu': item.vatLieu
     }));
     const wsItems = XLSX.utils.json_to_sheet(itemsData);

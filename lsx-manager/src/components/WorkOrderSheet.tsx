@@ -2,6 +2,22 @@ import React from 'react';
 import type { LSXData, LSXItem } from '../types';
 import { getRelevantSpecs, type PrintConfig, DEFAULT_PRINT_CONFIG } from '../utils/printConfig';
 
+const extractDateOnly = (val: any): string => {
+    if (!val) return '';
+    let str = String(val).trim();
+    if (str.includes('T')) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+            const day = d.getDate().toString().padStart(2, '0');
+            const month = (d.getMonth() + 1).toString().padStart(2, '0');
+            return `${day}/${month}/${d.getFullYear()}`;
+        }
+        return str.split('T')[0];
+    }
+    if (str.includes(' ')) return str.split(' ')[0];
+    return str;
+};
+
 interface WorkOrderSheetProps {
     order: LSXData;
     item: LSXItem;
@@ -133,28 +149,43 @@ export const WorkOrderSheet: React.FC<WorkOrderSheetProps> = ({ order, item, pri
                 }
             `}</style>
 
-            <div className="print-header">
-                <div className="print-title">LỆNH SẢN XUẤT / PHIẾU THEO DÕI QUY TRÌNH</div>
-                <div className="print-subtitle">
-                    Số phiếu: <strong>{order.meta.phieuXuat}</strong> | Ngày: {new Date().toLocaleDateString('vi-VN')}
+            <div className="print-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px', textAlign: 'left' }}>
+                <div style={{ width: '50px', border: '2px solid #000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff', boxSizing: 'border-box' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 'bold', borderBottom: '1px solid #000', width: '100%', textAlign: 'center', padding: '2px 0', background: '#f0f0f0' }}>STT</div>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', padding: '2px 0', lineHeight: '1' }}>{order.items.findIndex(i => i.id === item.id) + 1}</div>
                 </div>
+                
+                <div style={{ flex: 1, textAlign: 'center', padding: '0 10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+                        <div className="print-title" style={{ fontSize: '24px', fontWeight: 'bold', textTransform: 'uppercase', margin: 0 }}>LỆNH SẢN XUẤT</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 30px' }}>-</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>Số phiếu: {order.meta.phieuXuat}</div>
+                    </div>
+                    <div className="print-subtitle" style={{ fontSize: '14px', fontStyle: 'italic' }}>
+                        Ngày in: {new Date().toLocaleDateString('vi-VN')} | Ngày giao: {extractDateOnly(order.meta.ngayGiaoHang)}
+                    </div>
+                </div>
+                
+                <div style={{ width: '50px' }}></div>
             </div>
 
             <table className="print-info-table">
                 <tbody>
                     <tr>
-                        <td className="print-info-label">Khách hàng</td>
-                        <td>{order.meta.khachHang}</td>
-                        <td className="print-info-label">Ngày giao</td>
-                        <td>{order.meta.ngayGiaoHang}</td>
+                        <td className="print-info-label" style={{ width: '15%' }}>Khách hàng</td>
+                        <td style={{ fontWeight: 'bold', fontSize: '16px', width: '35%' }}>{order.meta.khachHang}</td>
+                        <td className="print-info-label" style={{ width: '15%' }}>Số SO</td>
+                        <td style={{ fontWeight: 'bold', fontSize: '16px', width: '35%' }}>{order.meta.donHangSo}</td>
                     </tr>
                     <tr>
-                        <td className="print-info-label">Mã hàng / Tên</td>
-                        <td colSpan={3} style={{ fontWeight: 'bold', fontSize: '15px' }}>{item.tenHangHoa}</td>
+                        <td className="print-info-label">Mã/Tên hàng</td>
+                        <td style={{ width: '35%', fontWeight: 'bold', fontSize: '16px' }}>{item.tenHangHoa}</td>
+                        <td className="print-info-label" style={{ width: '15%' }}>Quy cách</td>
+                        <td style={{ width: '35%', fontWeight: 'bold', fontSize: '20px' }}>{item.quyCach}</td>
                     </tr>
                     <tr>
-                        <td className="print-info-label">Quy cách</td>
-                        <td>{item.quyCach}</td>
+                        <td className="print-info-label">Lớp mạ/Bề mặt</td>
+                        <td style={{ fontWeight: 'bold', fontSize: '16px' }}>{item.beMat}</td>
                         <td className="print-info-label">Số lượng</td>
                         <td>
                             <strong style={{ fontSize: '16px' }}>{item.slYeuCau}</strong> {item.donVi}
@@ -323,32 +354,47 @@ const generateWorkOrderHTML = (order: LSXData, item: LSXItem, printConfig: Print
         <div style="width: 200mm; margin: 0 auto; padding-top: 5px; position: relative;">
             <img src="${window.location.origin}${import.meta.env.BASE_URL}logo-alpha.png" class="watermark" />
             
-            <!-- HEADER -->
-            <div style="text-align: center; margin-bottom: 10px;">
-                <h1 style="margin: 0 0 2px 0; font-size: 16pt; text-transform: uppercase;">LỆNH SẢN XUẤT / PHIẾU THEO DÕI QT</h1>
-                <div style="font-size: 10pt; font-style: italic;">
-                    Số phiếu: <strong>${order.meta.phieuXuat}</strong> | Ngày in: ${new Date().toLocaleDateString('vi-VN')}
+            <!-- HEADER with STT Box Layout -->
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 15px;">
+                <div style="width: 50px; border: 2px solid #000; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; box-sizing: border-box;">
+                    <div style="font-size: 10pt; font-weight: bold; border-bottom: 1px solid #000; width: 100%; text-align: center; padding: 2px 0; background: #f0f0f0;">STT</div>
+                    <div style="font-size: 20pt; font-weight: bold; padding: 2px 0; line-height: 1;">${order.items.findIndex(i => i.id === item.id) + 1}</div>
                 </div>
+                
+                <div style="flex: 1; text-align: center; padding: 0 10px;">
+                    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                        <h1 style="margin: 0; font-size: 20pt; text-transform: uppercase;">LỆNH SẢN XUẤT</h1>
+                        <div style="font-size: 20pt; font-weight: bold; margin: 0 30px;">-</div>
+                        <div style="font-size: 20pt; font-weight: bold;">Số phiếu: ${order.meta.phieuXuat}</div>
+                    </div>
+                    <div style="font-size: 11pt; font-style: italic;">
+                        Ngày in: ${new Date().toLocaleDateString('vi-VN')} | Ngày giao: ${extractDateOnly(order.meta.ngayGiaoHang)}
+                    </div>
+                </div>
+                
+                <div style="width: 50px;"></div> <!-- Spacer -->
             </div>
 
             <!-- INFO TABLE -->
-            <table style="width: 100%; border: 1px solid #000; margin-bottom: 15px; font-size: 10pt;">
+            <table style="width: 100%; border: 1px solid #000; margin-bottom: 15px; font-size: 11pt;">
                 <tr>
-                    <td style="width: 15%; background: #eee; font-weight: bold; padding: 3px 5px;">Khách hàng</td>
-                    <td style="width: 35%; padding: 3px 5px;">${order.meta.khachHang}</td>
-                    <td style="width: 15%; background: #eee; font-weight: bold; padding: 3px 5px;">Ngày giao</td>
-                    <td style="width: 35%; padding: 3px 5px;">${order.meta.ngayGiaoHang}</td>
+                    <td style="width: 15%; background: #eee; font-weight: bold; padding: 4px 6px;">Khách hàng</td>
+                    <td style="width: 35%; font-size: 12pt; font-weight: bold; padding: 4px 6px;">${order.meta.khachHang}</td>
+                    <td style="width: 15%; background: #eee; font-weight: bold; padding: 4px 6px;">Số SO</td>
+                    <td style="width: 35%; font-size: 12pt; font-weight: bold; padding: 4px 6px;">${order.meta.donHangSo}</td>
                 </tr>
                 <tr>
-                    <td style="background: #eee; font-weight: bold; padding: 3px 5px;">Tên hàng</td>
-                    <td colspan="3" style="font-weight: bold; font-size: 12pt; padding: 3px 5px;">${item.tenHangHoa}</td>
+                    <td style="background: #eee; font-weight: bold; padding: 4px 6px;">Tên hàng</td>
+                    <td style="width: 35%; font-weight: bold; font-size: 12pt; padding: 4px 6px;">${item.tenHangHoa}</td>
+                    <td style="width: 15%; background: #eee; font-weight: bold; padding: 4px 6px;">Quy cách</td>
+                    <td style="width: 35%; padding: 4px 6px; font-weight: bold; font-size: 16pt;">${item.quyCach}</td>
                 </tr>
                 <tr>
-                    <td style="background: #eee; font-weight: bold; padding: 3px 5px;">Quy cách</td>
-                    <td style="padding: 3px 5px;">${item.quyCach}</td>
-                    <td style="background: #eee; font-weight: bold; padding: 3px 5px;">Số lượng</td>
-                     <td style="padding: 3px 5px;">
-                        <strong style="font-size: 12pt;">${item.slYeuCau}</strong> ${item.donVi}
+                    <td style="background: #eee; font-weight: bold; padding: 4px 6px;">Lớp mạ/Bề mặt</td>
+                    <td style="padding: 4px 6px; font-weight: bold; font-size: 12pt;">${item.beMat || ''}</td>
+                    <td style="background: #eee; font-weight: bold; padding: 4px 6px;">Số lượng</td>
+                     <td style="padding: 4px 6px;">
+                        <strong style="font-size: 13pt;">${item.slYeuCau}</strong> ${item.donVi}
                         ${item.slDuPhong ? `<span style="font-size: 9pt; margin-left: 8px;">(Dự phòng: ${item.slDuPhong})</span>` : ''}
                     </td>
                 </tr>
@@ -418,13 +464,13 @@ const generateCoverPageHTML = (order: LSXData, totalItems: number): string => {
                     <strong style="width: 180px;">Khách hàng:</strong>
                     <span>${order.meta.khachHang}</span>
                 </div>
-                <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999;">
+                <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999; font-size: 24pt;">
                     <strong style="width: 180px;">Phiếu xuất:</strong>
-                    <span>${order.meta.phieuXuat}</span>
+                    <span style="font-weight: bold;">${order.meta.phieuXuat}</span>
                 </div>
                 <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999;">
                     <strong style="width: 180px;">Ngày giao:</strong>
-                    <span>${order.meta.ngayGiaoHang ? new Date(order.meta.ngayGiaoHang).toLocaleDateString('vi-VN') : '...'}</span>
+                    <span>${extractDateOnly(order.meta.ngayGiaoHang) || '...'}</span>
                 </div>
                 <div style="display: flex; margin-bottom: 15px; border-bottom: 1px dotted #999;">
                     <strong style="width: 180px;">Tổng số mục:</strong>

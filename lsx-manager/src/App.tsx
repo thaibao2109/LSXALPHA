@@ -6,10 +6,11 @@ import { OrderDetailView } from './components/OrderDetailView';
 import { DailyReportModal } from './components/DailyReportModal';
 import { NotificationMenu } from './components/NotificationMenu';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
-import type { LSXData, ActivityLog, ProductType, User, Tool, MaterialTypeDefinition } from './types';
+import type { LSXData, ActivityLog, ProductType, User, Tool, MaterialTypeDefinition, StatusDefinition, Task } from './types';
 import { LoginScreen } from './components/LoginScreen';
 import { ToolManagement } from './components/ToolManagement';
 import { UserManagement } from './components/UserManagement';
+import { ItemControlDashboard } from './components/ItemControlDashboard';
 import {
   Settings,
   FileText,
@@ -20,7 +21,8 @@ import {
   Menu,
   X,
   Hammer,
-  Users
+  Users,
+  LayoutDashboard
 } from 'lucide-react';
 import { api } from './utils/api';
 import { uuid } from './utils/uuid';
@@ -99,6 +101,12 @@ const OrderDetailRouteWrapper = ({
   );
 };
 
+const DEFAULT_STATUSES: StatusDefinition[] = [
+  { id: 'pending', label: 'Chờ', color: '#94a3b8', isDone: false, order: 0 },
+  { id: 'in_progress', label: 'Đang làm', color: '#2563eb', isDone: false, order: 1 },
+  { id: 'completed', label: 'Hoàn thành', color: '#16a34a', isDone: true, order: 2 },
+];
+
 function App() {
   // Session Persistence: Init user from localStorage
   const [user, setUser] = useState<User | null>(() => {
@@ -120,6 +128,7 @@ function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const [taskTemplates, setTaskTemplates] = useState<string[]>([]);
+  const [taskStatuses, setTaskStatuses] = useState<StatusDefinition[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [materialTypes, setMaterialTypes] = useState<MaterialTypeDefinition[]>(DEFAULT_MATERIAL_TYPES);
   const [tools, setTools] = useState<Tool[]>([]);
@@ -146,83 +155,95 @@ function App() {
   // Initial Load from API + Migration
   useEffect(() => {
     const initData = async () => {
-      const localOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
-      const localTemplates = localStorage.getItem(TEMPLATE_KEY);
-      const localLogs = localStorage.getItem(LOGS_STORAGE_KEY);
-      const localProductTypes = localStorage.getItem(PRODUCT_TYPES_KEY);
+      try {
+        const localOrders = localStorage.getItem(ORDERS_STORAGE_KEY);
+        const localTemplates = localStorage.getItem(TEMPLATE_KEY);
+        const localLogs = localStorage.getItem(LOGS_STORAGE_KEY);
+        const localProductTypes = localStorage.getItem(PRODUCT_TYPES_KEY);
 
-      let dbOrders = await api.getOrders();
-      let dbTemplates = await api.getSettings<string[]>('task_templates');
-      let dbProductTypes = await api.getSettings<ProductType[]>('product_types');
-      let dbLogs = await api.getLogs();
-      let dbPrintConfig = await api.getSettings<PrintConfig>('print_config');
-      let dbTools = await api.getSettings<Tool[]>('tools');
-      let dbMaterialTypes = await api.getSettings<MaterialTypeDefinition[]>('material_types');
-
-      if (dbOrders.length === 0 && localOrders) {
+        let dbOrders: any[] = [];
         try {
-          const parsed = JSON.parse(localOrders);
-          for (const order of parsed) await api.saveOrder(order);
-          dbOrders = parsed;
-          localStorage.removeItem(ORDERS_STORAGE_KEY);
-        } catch (e) { console.error("Migration failed", e); }
-      }
+          dbOrders = await api.getOrders();
+        } catch (e: any) {
+          console.error('getOrders Error:', e);
+          // Don't alert here yet, let's try other data too or alert once at the end
+        }
+        
+        const [
+          dbTemplates, 
+          dbStatuses, 
+          dbProductTypes, 
+          dbLogs, 
+          dbPrintConfig, 
+          dbTools, 
+          dbMaterialTypes
+        ] = await Promise.all([
+          api.getSettings<string[]>('task_templates'),
+          api.getSettings<StatusDefinition[]>('task_statuses'),
+          api.getSettings<ProductType[]>('product_types'),
+          api.getLogs(),
+          api.getSettings<PrintConfig>('print_config'),
+          api.getSettings<Tool[]>('tools'),
+          api.getSettings<MaterialTypeDefinition[]>('material_types')
+        ]);
 
-      if (!dbTemplates && localTemplates) {
-        try {
-          const parsed = JSON.parse(localTemplates);
-          await api.saveSettings('task_templates', parsed);
-          dbTemplates = parsed;
-          localStorage.removeItem(TEMPLATE_KEY);
-        } catch (e) { console.error("Migration failed", e); }
-      }
+        if (dbOrders.length === 0 && localOrders) {
+          try {
+            const parsed = JSON.parse(localOrders);
+            for (const order of parsed) await api.saveOrder(order);
+            dbOrders = parsed;
+            localStorage.removeItem(ORDERS_STORAGE_KEY);
+          } catch (e) { console.error("Migration failed", e); }
+        }
 
-      if (!dbProductTypes && localProductTypes) {
-        try {
-          const parsed = JSON.parse(localProductTypes);
-          await api.saveSettings('product_types', parsed);
-          dbProductTypes = parsed;
-          localStorage.removeItem(PRODUCT_TYPES_KEY);
-        } catch (e) { console.error("Migration failed", e); }
-      }
+        let finalTemplates = dbTemplates;
+        if (!dbTemplates && localTemplates) {
+          try {
+            const parsed = JSON.parse(localTemplates);
+            await api.saveSettings('task_templates', parsed);
+            finalTemplates = parsed;
+            localStorage.removeItem(TEMPLATE_KEY);
+          } catch (e) { console.error("Migration failed", e); }
+        }
 
-      if (dbLogs.length === 0 && localLogs) {
-        try {
-          const parsed = JSON.parse(localLogs);
-          for (const log of parsed) await api.saveLog(log);
-          dbLogs = parsed;
-          localStorage.removeItem(LOGS_STORAGE_KEY);
-        } catch (e) { console.error("Migration failed", e); }
-      }
+        let finalProductTypes = dbProductTypes;
+        if (!dbProductTypes && localProductTypes) {
+          try {
+            const parsed = JSON.parse(localProductTypes);
+            await api.saveSettings('product_types', parsed);
+            finalProductTypes = parsed;
+            localStorage.removeItem(PRODUCT_TYPES_KEY);
+          } catch (e) { console.error("Migration failed", e); }
+        }
 
-      setOrders(dbOrders);
-      setTaskTemplates(dbTemplates || DEFAULT_TEMPLATES);
-      setProductTypes(dbProductTypes || []);
-      setActivityLogs(dbLogs);
-      setPrintConfig(dbPrintConfig || DEFAULT_PRINT_CONFIG);
-      setTools(dbTools || []);
-      setMaterialTypes(dbMaterialTypes || DEFAULT_MATERIAL_TYPES);
+        let finalLogs = dbLogs || [];
+        if (finalLogs.length === 0 && localLogs) {
+          try {
+            const parsed = JSON.parse(localLogs);
+            for (const log of parsed) await api.saveLog(log);
+            finalLogs = parsed;
+            localStorage.removeItem(LOGS_STORAGE_KEY);
+          } catch (e) { console.error("Migration failed", e); }
+        }
 
+        setOrders(dbOrders);
+        setTaskTemplates(finalTemplates || DEFAULT_TEMPLATES);
+        setTaskStatuses(dbStatuses && Array.isArray(dbStatuses) && dbStatuses.length > 0 ? dbStatuses : DEFAULT_STATUSES);
+        setProductTypes(finalProductTypes || []);
+        setActivityLogs(finalLogs);
+        setPrintConfig(dbPrintConfig || DEFAULT_PRINT_CONFIG);
+        setTools(dbTools || []);
+        setMaterialTypes(dbMaterialTypes || DEFAULT_MATERIAL_TYPES);
 
-      // Check and create default admin
-      const users = await api.getUsers();
-      if (users.length === 0) {
-        console.log("No users found. Creating default admin.");
-        await api.saveUser({
-          id: 'admin',
-          username: 'admin',
-          name: 'Administrator',
-          role: 'admin',
-          password: 'admin'
-        });
-        // Also create default manager
-        await api.saveUser({
-          id: 'manager',
-          username: 'manager',
-          name: 'Manager',
-          role: 'manager',
-          password: 'manager'
-        });
+        // Check and create default admin
+        const users = await api.getUsers();
+        if (users.length === 0) {
+          await api.saveUser({ id: 'admin', username: 'admin', name: 'Administrator', role: 'admin', password: 'admin' });
+          await api.saveUser({ id: 'manager', username: 'manager', name: 'Manager', role: 'manager', password: 'manager' });
+        }
+      } catch (error: any) {
+        console.error('Initialization Error:', error);
+        alert('Lỗi khởi tạo ứng dụng: ' + error.message);
       }
     };
 
@@ -242,6 +263,11 @@ function App() {
   const handleUpdateTemplates = async (newTemplates: string[]) => {
     setTaskTemplates(newTemplates);
     await api.saveSettings('task_templates', newTemplates);
+  };
+
+  const handleUpdateStatuses = async (newStatuses: StatusDefinition[]) => {
+    setTaskStatuses(newStatuses);
+    await api.saveSettings('task_statuses', newStatuses);
   };
 
   const handleUpdateProductTypes = async (newProductTypes: ProductType[]) => {
@@ -344,6 +370,81 @@ function App() {
   };
 
   // Logic needs ID now, not relying on activeOrderId
+  const handleUpdateTaskStatus = async (orderId: string, itemId: string, taskId: string, newStatus: Task['status']) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const updatedOrder = {
+      ...order,
+      items: order.items.map(item => {
+        if (item.id !== itemId) return item;
+        return {
+          ...item,
+          tasks: (item.tasks || []).map(task => {
+            if (task.id !== taskId) return task;
+            return { ...task, status: newStatus };
+          })
+        };
+      })
+    };
+
+    // Optimistic update
+    setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+
+    try {
+      await api.saveOrder(updatedOrder);
+      
+      const item = order.items.find(i => i.id === itemId);
+      const task = item?.tasks?.find(t => t.id === taskId);
+      
+      addLog('item_edited', orderId, order.meta.phieuXuat, {
+        itemId,
+        itemName: item?.tenHangHoa,
+        taskId,
+        taskName: task?.name,
+        details: { field: 'task_status', newValue: newStatus }
+      });
+    } catch (error) {
+      console.error("Failed to update task status:", error);
+      // Revert if failed
+      const dbOrders = await api.getOrders();
+      setOrders(dbOrders);
+    }
+  };
+
+  const handleUpdatePrepStatus = async (orderId: string, itemId: string, field: 'prepMaterial' | 'prepTool', newStatus: 'đã có' | 'đang làm' | 'chưa có') => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const updatedOrder = {
+      ...order,
+      items: order.items.map(item => {
+        if (item.id !== itemId) return item;
+        return { ...item, [field]: newStatus };
+      })
+    };
+
+    // Optimistic update
+    setOrders(prev => prev.map(o => o.id === orderId ? updatedOrder : o));
+
+    try {
+      await api.saveOrder(updatedOrder);
+      
+      const item = order.items.find(i => i.id === itemId);
+      
+      addLog('item_edited', orderId, order.meta.phieuXuat, {
+        itemId,
+        itemName: item?.tenHangHoa,
+        details: { field, newValue: newStatus }
+      });
+    } catch (error) {
+      console.error("Failed to update prep status:", error);
+      // Revert if failed
+      const dbOrders = await api.getOrders();
+      setOrders(dbOrders);
+    }
+  };
+
   const handleDeleteOrder = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
@@ -482,6 +583,12 @@ function App() {
             label="Lệnh sản xuất"
             active={!isOrderDetails && !isTools && location.pathname === '/'} // Active if at root
             onClick={() => navigate('/')}
+          />
+          <SidebarItem
+            icon={LayoutDashboard}
+            label="Kiểm soát mã hàng"
+            active={location.pathname === '/dashboard'}
+            onClick={() => navigate('/dashboard')}
           />
 
 
@@ -692,6 +799,15 @@ function App() {
             <Route path="/users" element={
               <UserManagement currentUser={user} />
             } />
+            <Route path="/dashboard" element={
+              <ItemControlDashboard 
+                orders={orders} 
+                onSelectOrder={handleSelectOrder} 
+                onUpdateTaskStatus={handleUpdateTaskStatus}
+                onUpdatePrepStatus={handleUpdatePrepStatus}
+                taskStatuses={taskStatuses}
+              />
+            } />
           </Routes>
         </div>
       </main>
@@ -703,6 +819,8 @@ function App() {
         templates={taskTemplates}
         defaultTemplates={DEFAULT_TEMPLATES}
         onUpdateTemplates={handleUpdateTemplates}
+        taskStatuses={taskStatuses}
+        onUpdateStatuses={handleUpdateStatuses}
         printConfig={printConfig}
         onUpdatePrintConfig={handleUpdatePrintConfig}
         productTypes={productTypes}

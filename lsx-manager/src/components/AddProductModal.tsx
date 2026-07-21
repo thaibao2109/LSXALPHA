@@ -147,7 +147,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-surface-700 mb-1">Bề Mặt</label>
+                                <label className="block text-sm font-bold text-surface-700 mb-1">Bề Mặt / Lớp Mạ</label>
                                 <input
                                     type="text"
                                     value={formData.beMat}
